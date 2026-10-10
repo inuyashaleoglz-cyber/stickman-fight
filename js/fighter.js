@@ -334,6 +334,130 @@ class Fighter {
   }
 
   decidirIA(oponente) {
+      intentarGolpe(oponente, mv, nombre) {
+    const dist = Math.abs(this.x - oponente.x);
+    const enFrente = (oponente.x - this.x) * this.facing > 0;
+    const yDiff = Math.abs(this.y - oponente.y);
+    if (yDiff > 70 && !mv.jumpHit && !mv.special) return;
+    if (dist > mv.range + 15 || !enFrente) return;
+    if (oponente.crouching && !mv.crouchHit && !mv.special) return;
+    if (!oponente.enSuelo && !mv.jumpHit && !mv.special) return;
+
+    this.yaGolpeo = true;
+    let daño = mv.damage * this.def.dmgMult;
+    if (mv.special) daño *= 1.2;
+    if (this.esIA) daño *= AIS[dificultad].dmgMult;
+    daño = Math.round(daño);
+
+    if (oponente.blocking && ((this.x - oponente.x) * oponente.facing > 0)) {
+      const reducido = Math.max(1, Math.round(daño * 0.18));
+      oponente.salud -= reducido;
+      oponente.invulnerable = 8;
+      this.meter = Math.min(100, this.meter + mv.meterGain * 0.5);
+      oponente.meter = Math.min(100, oponente.meter + 4);
+      const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
+      spawnParticles(hx, hy, 8, '#93c5fd', 4, 0.3);
+      spawnRing(hx, hy, '#93c5fd', 35);
+      spawnDamageNumber(hx, hy - 20, 'BLOQ', '#93c5fd');
+      SFX.block(); shake(2);
+      return;
+    }
+
+    let dmgFinal = daño;
+    if (oponente.def.id === 'rocky') dmgFinal = Math.round(dmgFinal * 0.85);
+    if (oponente.def.id === 'titan') dmgFinal = Math.round(dmgFinal * 0.75);
+
+    oponente.salud -= dmgFinal;
+    if (oponente.salud < 0) oponente.salud = 0;
+
+    const hasArmor = oponente.superArmorFrames > 0;
+    if (!hasArmor) {
+      oponente.invulnerable = 16;
+      oponente.hitFlash = 10;
+      oponente.estado = 'hit';
+      oponente.estadoTimer = 14;
+      if (oponente.def.id !== 'titan' || !oponente.enSuelo) {
+        oponente.x += this.facing * mv.kb;
+        if (oponente.x < WALL_PAD) oponente.x = WALL_PAD;
+        if (oponente.x > W - WALL_PAD) oponente.x = W - WALL_PAD;
+      }
+      if (mv.launch) {
+        oponente.vy = -8; oponente.enSuelo = false;
+        oponente.estado = 'hit'; oponente.estadoTimer = 30;
+      }
+    } else {
+      oponente.invulnerable = 6;
+      oponente.hitFlash = 5;
+    }
+
+    this.meter = Math.min(100, this.meter + mv.meterGain);
+    oponente.meter = Math.min(100, oponente.meter + mv.meterGain * 0.6);
+    this.combo++; this.comboTimer = 90;
+
+    if (this.def.id === 'frost' && !mv.special) {
+      oponente.slowTimer = 120;
+      spawnParticles(oponente.x, oponente.y - 30, 8, '#a5f3fc', 5);
+    }
+    if (mv.special && this.def.id === 'frost') oponente.slowTimer = 200;
+
+    if (this.def.id === 'bolt') {
+      this.hitCount++;
+      if (this.hitCount >= 4) {
+        this.hitCount = 0;
+        oponente.salud -= 5;
+        if (oponente.salud < 0) oponente.salud = 0;
+        spawnLightning(oponente.x, oponente.y - 50, this.color);
+        spawnParticles(oponente.x, oponente.y - 50, 15, this.color, 8);
+        spawnDamageNumber(oponente.x, oponente.y - 100, '⚡5', this.color, true);
+        SFX.hit();
+      }
+    }
+
+    const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
+    spawnParticles(hx, hy, mv.special ? 30 : 14, this.accent, mv.special ? 12 : 7);
+    spawnParticles(hx, hy, 6, '#fff', 5, 0.4);
+    spawnRing(hx, hy, this.accent, mv.special ? 110 : 60);
+    spawnDamageNumber(hx, hy - 15, '-' + dmgFinal, mv.special ? '#fbbf24' : '#fff', dmgFinal >= 12);
+    shake(mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5));
+    SFX.hit();
+  }
+
+  recibirDaño(daño, atacante, tipo) {
+    // Bloqueo reduce el daño
+    if (this.blocking && atacante && ((atacante.x - this.x) * this.facing < 0)) {
+      const reducido = Math.max(1, Math.round(daño * 0.15));
+      this.salud -= reducido;
+      this.invulnerable = 12;
+      spawnParticles(this.x + this.facing * 20, this.y - 50, 8, '#93c5fd', 4);
+      SFX.block();
+      spawnDamageNumber(this.x, this.y - 90, 'Bloqueado', '#93c5fd');
+      shake(2);
+      return;
+    }
+
+    this.salud -= daño;
+    if (this.salud < 0) this.salud = 0;
+    this.invulnerable = 18;
+    this.estado = 'hit';
+    this.estadoTimer = 14;
+    this.hitFlash = 10;
+    this.combo = 0;
+
+    // Efectos
+    const hx = this.x + (atacante ? Math.sign(this.x - atacante.x) * 15 : 0);
+    const hy = this.y - 55;
+    spawnParticles(hx, hy, 14, this.accent, 7);
+    spawnParticles(hx, hy, 6, '#fff', 5);
+    spawnDamageNumber(hx, hy - 10, '-' + daño, '#fbbf24', daño >= 12);
+    shake(daño >= 12 ? 8 : 5);
+    SFX.hit();
+
+    // Combo del atacante
+    if (atacante) {
+      atacante.combo++;
+      atacante.comboTimer = 90;
+    }
+  }
     const cfg = AIS[dificultad];
     const dist = Math.abs(oponente.x - this.x);
     const dir = Math.sign(oponente.x - this.x);
