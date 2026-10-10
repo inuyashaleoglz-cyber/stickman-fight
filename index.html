@@ -9,18 +9,19 @@
 <body>
 
 <div id="menu">
-  <h1>⚔ Stickman Fight</h1>
+  <h1>⚔ STICKMAN FIGHT</h1>
   <p class="subtitle">EDICIÓN ULTIMATE · MEJOR DE 3</p>
   <h2>Elige tu luchador</h2>
   <div class="char-grid" id="charGrid"></div>
-  <h2>Dificultad</h2>
-  <div class="difficulty-row" id="diffRow">
-    <button class="diff-btn" data-diff="facil">FÁCIL</button>
-    <button class="diff-btn selected" data-diff="normal">NORMAL</button>
-    <button class="diff-btn" data-diff="dificil">DIFÍCIL</button>
-    <button class="diff-btn" data-diff="pesadilla">🔥 PESADILLA</button>
+  <div class="bottom-row">
+    <div class="difficulty-row" id="diffRow">
+      <button class="diff-btn" data-diff="facil">FÁCIL</button>
+      <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+      <button class="diff-btn" data-diff="dificil">DIFÍCIL</button>
+      <button class="diff-btn" data-diff="pesadilla">🔥 PESADILLA</button>
+    </div>
+    <button id="startBtn">PELEAR ▶</button>
   </div>
-  <button id="startBtn">PELEAR ▶</button>
 </div>
 
 <div id="gameScreen">
@@ -37,16 +38,12 @@
     <div class="ctrl-box"><b>Uppercut</b><span class="key">U</span></div>
     <div class="ctrl-box"><b>ESPECIAL</b><span class="key">I</span></div>
     <div class="ctrl-box"><b>Bloquear</b><span class="key">L</span></div>
-    <div class="ctrl-box"><b>Reiniciar</b><span class="key">R</span></div>
   </div>
 </div>
 
 <script src="js/config.js"></script>
-<script src="js/audio.js"></script>
 <script src="js/effects.js"></script>
-<script src="js/input.js"></script>
 <script src="js/fighter.js"></script>
-<script src="js/menu.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
