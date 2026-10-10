@@ -50,26 +50,35 @@ function dificultadDelPiso(piso) {
 //  GENERAR 3 MEJORAS ALEATORIAS
 // ============================================================
 function elegirMejorasAleatorias(cantidad) {
+  // Filtrar mejoras disponibles para el personaje actual
+  const personajeActual = run ? run.personajeId : null;
+  const disponibles = MEJORAS.filter(function(m) {
+    // Las mejoras sin "soloPara" son para todos
+    if (!m.soloPara) return true;
+    // Las que tienen "soloPara" solo aparecen si coincide con el personaje
+    return m.soloPara === personajeActual;
+  });
+
   // Agrupar por rareza
   const porRareza = { comun: [], rara: [], epica: [] };
-  MEJORAS.forEach(function(m){ porRareza[m.rarity].push(m); });
+  disponibles.forEach(function(m){
+    if (porRareza[m.rarity]) porRareza[m.rarity].push(m);
+  });
 
   const elegidas = [];
   const usadas = {};
 
   for (let i = 0; i < cantidad; i++) {
-    // Tirar dado de rareza
     const r = Math.random() * 100;
     let rareza;
     if (r < RARITY_WEIGHTS.epica) rareza = 'epica';
     else if (r < RARITY_WEIGHTS.epica + RARITY_WEIGHTS.rara) rareza = 'rara';
     else rareza = 'comun';
 
-    // Elegir una de esa rareza que no se haya usado ya
     let pool = porRareza[rareza].filter(function(m){ return !usadas[m.id]; });
-    // Si se agotó esa rareza, intentar con otra
     if (pool.length === 0) {
-      const todas = MEJORAS.filter(function(m){ return !usadas[m.id]; });
+      // Si se agotó esta rareza, juntar todas las disponibles
+      const todas = disponibles.filter(function(m){ return !usadas[m.id]; });
       if (todas.length === 0) break;
       pool = todas;
     }
@@ -88,6 +97,22 @@ function elegirMejorasAleatorias(cantidad) {
 function aplicarMejora(mejora) {
   mejora.apply(run.bonuses);
   run.mejorasTomadas.push(mejora.id);
+
+  // Revisar si se activa alguna sinergia nueva
+  SINERGIAS.forEach(function(s) {
+    // ¿Ya la tenemos activada? Saltar.
+    if (run.bonuses.sinergiasActivas.indexOf(s.id) !== -1) return;
+    // ¿Tenemos todas las mejoras requeridas?
+    const tieneTodas = s.requiere.every(function(reqId) {
+      return run.mejorasTomadas.indexOf(reqId) !== -1;
+    });
+    if (tieneTodas) {
+      s.apply(run.bonuses);
+      run.bonuses.sinergiasActivas.push(s.id);
+      // Mostrar aviso en el HUD de la próxima pelea
+      run.sinergiaPendienteAviso = s;
+    }
+  });
 }
 
 // ============================================================
@@ -210,11 +235,19 @@ function roguelikeElegirMejora(mejora) {
 //  UI: PANTALLA DE MEJORAS
 // ============================================================
 function mostrarPantallaMejoras(opciones) {
+
+  // Si se activó una sinergia al terminar el piso anterior, avisar
+  let textoAviso = '';
+  if (run.sinergiaPendienteAviso) {
+    textoAviso = ' ✦ ¡SINERGIA ACTIVADA: ' + run.sinergiaPendienteAviso.nombre + '!';
+    run.sinergiaPendienteAviso = null;
+  }
+
   const overlay = document.getElementById('upgradeOverlay');
   const grid = document.getElementById('upgradeGrid');
   const sub = document.getElementById('upgradeSub');
 
-  sub.textContent = 'Piso ' + run.piso + ' superado · Elige una mejora para el piso ' + (run.piso + 1);
+  sub.textContent = 'Piso ' + run.piso + ' superado · Elige una mejora para el piso ' + (run.piso + 1) + textoAviso;
   grid.innerHTML = '';
 
   opciones.forEach(function(m) {
