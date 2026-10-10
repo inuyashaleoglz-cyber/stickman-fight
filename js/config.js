@@ -1,5 +1,5 @@
 // ============================================================
-//  DETECTOR DE ERRORES EN PANTALLA
+//  DETECTOR DE ERRORES
 // ============================================================
 window.addEventListener('error', function(e) {
   const box = document.getElementById('errorBox');
@@ -21,9 +21,10 @@ const GROUND = H - 70;
 const GRAVITY = 0.75;
 const WALL_PAD = 50;
 const ROUNDS_TO_WIN = 2;
+const MAX_PISO = 30;
 
 // ============================================================
-//  PERSONAJES (con personalidad de IA)
+//  PERSONAJES
 // ============================================================
 const CHARACTERS = [
   { id:'rocky', name:'ROCKY', desc:'Tanque equilibrado', color:'#4ade80', accent:'#22c55e',
@@ -86,7 +87,7 @@ const SCENARIOS = [
 ];
 
 // ============================================================
-//  DIFICULTADES DE LA IA
+//  DIFICULTADES BASE
 // ============================================================
 const AIS = {
   facil:     {name:'FÁCIL',     color:'#4ade80', reaction:26, aggression:0.35, blockChance:0.25, dodgeChance:0.15, speedMult:0.80, dmgMult:0.75, prediction:0.0, specialUse:0.3},
@@ -109,7 +110,92 @@ const MOVES = {
 };
 
 // ============================================================
-//  AUDIO SINTETIZADO
+//  MEJORAS DEL ROGUELIKE
+// ============================================================
+const MEJORAS = [
+  // COMUNES
+  { id:'daño1',      name:'FILO AFILADO',    icon:'🗡️', rarity:'comun',
+    desc:'+15% de daño con todos tus ataques.',
+    apply: function(b){ b.dañoPct += 0.15; } },
+  { id:'vida1',      name:'CORAZÓN EXTRA',   icon:'❤️', rarity:'comun',
+    desc:'+25 de vida máxima y te cura esa cantidad.',
+    apply: function(b){ b.vidaMax += 25; } },
+  { id:'medidor1',   name:'FLUJO RÁPIDO',    icon:'⚡', rarity:'comun',
+    desc:'Tu medidor de especial se llena 30% más rápido.',
+    apply: function(b){ b.medidorPct += 0.30; } },
+  { id:'defensa1',   name:'PIEL DURA',       icon:'🛡️', rarity:'comun',
+    desc:'Recibes 12% menos daño.',
+    apply: function(b){ b.defensaPct += 0.12; } },
+  { id:'velocidad1', name:'PIES LIGEROS',    icon:'💨', rarity:'comun',
+    desc:'+12% velocidad de movimiento.',
+    apply: function(b){ b.velocidadPct += 0.12; } },
+
+  // RARAS
+  { id:'critico',    name:'GOLPE CRÍTICO',   icon:'🎯', rarity:'rara',
+    desc:'15% de probabilidad de hacer daño x2.',
+    apply: function(b){ b.critChance += 0.15; } },
+  { id:'vampirismo', name:'VAMPIRISMO',      icon:'🩸', rarity:'rara',
+    desc:'Te curas 5% del daño que infliges.',
+    apply: function(b){ b.vampirismo += 0.05; } },
+  { id:'regenera',   name:'REGENERACIÓN',    icon:'🌿', rarity:'rara',
+    desc:'Recuperas 1.5 de vida por segundo.',
+    apply: function(b){ b.regeneracion += 1.5; } },
+  { id:'especial1',  name:'IMPULSO INICIAL', icon:'🔥', rarity:'rara',
+    desc:'Empiezas cada pelea con 40% del medidor lleno.',
+    apply: function(b){ b.medidorInicial += 0.40; } },
+  { id:'bloqueo',    name:'MURO DE HIERRO',  icon:'🧱', rarity:'rara',
+    desc:'Bloquear reduce el daño un 40% adicional.',
+    apply: function(b){ b.bloqueoExtraPct += 0.40; } },
+
+  // RARAS (tipo de ataque)
+  { id:'puño1',      name:'PUÑOS DE ACERO',  icon:'👊', rarity:'rara',
+    desc:'+40% de daño con puñetazos.',
+    apply: function(b){ b.punchPct += 0.40; } },
+  { id:'patada1',    name:'PIERNAS DE HIERRO', icon:'🦵', rarity:'rara',
+    desc:'+35% de daño con patadas y barridos.',
+    apply: function(b){ b.kickPct += 0.35; } },
+  { id:'uppercut1',  name:'COHETE',          icon:'🚀', rarity:'rara',
+    desc:'+50% de daño con uppercut.',
+    apply: function(b){ b.uppercutPct += 0.50; } },
+  { id:'combo1',     name:'ESPÍRITU DE COMBO', icon:'🌀', rarity:'rara',
+    desc:'Cada golpe del combo suma +5% de daño (max +50%).',
+    apply: function(b){ b.comboMasterPct += 0.05; } },
+
+  // ÉPICA
+  { id:'dash1',      name:'SOMBRA FANTASMA', icon:'👻', rarity:'epica',
+    desc:'Tu dash es más largo y te da invulnerabilidad breve.',
+    apply: function(b){ b.dashPct += 0.5; b.dashInvuln = true; } }
+];
+
+// Aplicar mejoras por rareza (probabilidades)
+const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
+
+// ============================================================
+//  SISTEMA DE BONUSES (defaults para Fighter)
+// ============================================================
+function bonusesVacios() {
+  return {
+    vidaMax: 0,
+    dañoPct: 0,
+    medidorPct: 0,
+    defensaPct: 0,
+    velocidadPct: 0,
+    critChance: 0,
+    vampirismo: 0,
+    regeneracion: 0,
+    medidorInicial: 0,
+    bloqueoExtraPct: 0,
+    punchPct: 0,
+    kickPct: 0,
+    uppercutPct: 0,
+    comboMasterPct: 0,
+    dashPct: 0,
+    dashInvuln: false
+  };
+}
+
+// ============================================================
+//  AUDIO
 // ============================================================
 let audioCtx = null;
 function initAudio() {
@@ -143,7 +229,10 @@ const SFX = {
   count:   function(){ beep(560, 560, 0.11, 'sine', 0.07); },
   fight:   function(){ beep(300, 900, 0.35, 'square', 0.13); },
   jump:    function(){ beep(600, 900, 0.06, 'sine', 0.04); },
-  dash:    function(){ beep(700, 1100, 0.08, 'triangle', 0.05); }
+  dash:    function(){ beep(700, 1100, 0.08, 'triangle', 0.05); },
+  upgrade: function(){ beep(600, 1400, 0.35, 'triangle', 0.12); },
+  defeat:  function(){ beep(300, 80, 0.8, 'sawtooth', 0.15); },
+  victory: function(){ beep(500, 1500, 0.8, 'square', 0.15); }
 };
 
 // ============================================================
@@ -151,7 +240,6 @@ const SFX = {
 // ============================================================
 const keys = {};
 const justPressed = {};
-const lastTapTime = { a: 0, d: 0 };
 
 document.addEventListener('keydown', function(e) {
   initAudio();
@@ -175,16 +263,21 @@ function clearPresses() {
 }
 
 // ============================================================
-//  RÉCORDS (localStorage)
+//  RÉCORDS
 // ============================================================
-const RECORDS_KEY = 'stickmanFight_records_v1';
+const RECORDS_KEY = 'stickmanFight_records_v2';
 function cargarRecords() {
   try {
     const raw = localStorage.getItem(RECORDS_KEY);
-    if (!raw) return { victorias: 0, mejorCombo: 0, personajeFav: null, wins: {} };
-    return JSON.parse(raw);
+    if (!raw) return { victorias: 0, mejorCombo: 0, personajeFav: null, wins: {},
+                        mejorPisoRoguelike: 0, roguelikesGanados: 0 };
+    const r = JSON.parse(raw);
+    if (r.mejorPisoRoguelike === undefined) r.mejorPisoRoguelike = 0;
+    if (r.roguelikesGanados === undefined) r.roguelikesGanados = 0;
+    return r;
   } catch(e) {
-    return { victorias: 0, mejorCombo: 0, personajeFav: null, wins: {} };
+    return { victorias: 0, mejorCombo: 0, personajeFav: null, wins: {},
+             mejorPisoRoguelike: 0, roguelikesGanados: 0 };
   }
 }
 function guardarRecords(r) {
@@ -195,11 +288,20 @@ function registrarVictoria(personajeId, combo) {
   r.victorias++;
   r.wins[personajeId] = (r.wins[personajeId] || 0) + 1;
   if (combo > r.mejorCombo) r.mejorCombo = combo;
-  // Personaje favorito = el más usado
   let best = 0, fav = null;
   for (const id in r.wins) {
     if (r.wins[id] > best) { best = r.wins[id]; fav = id; }
   }
   r.personajeFav = fav;
+  guardarRecords(r);
+}
+function registrarPisoRoguelike(piso) {
+  const r = cargarRecords();
+  if (piso > r.mejorPisoRoguelike) r.mejorPisoRoguelike = piso;
+  guardarRecords(r);
+}
+function registrarRoguelikeGanado() {
+  const r = cargarRecords();
+  r.roguelikesGanados++;
   guardarRecords(r);
 }
