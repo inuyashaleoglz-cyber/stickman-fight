@@ -113,7 +113,9 @@ const MOVES = {
 //  MEJORAS DEL ROGUELIKE
 // ============================================================
 const MEJORAS = [
-  // COMUNES
+  // ============================================================
+  //  COMUNES (genéricas para todos)
+  // ============================================================
   { id:'daño1',      name:'FILO AFILADO',    icon:'🗡️', rarity:'comun',
     desc:'+15% de daño con todos tus ataques.',
     apply: function(b){ b.dañoPct += 0.15; } },
@@ -129,8 +131,16 @@ const MEJORAS = [
   { id:'velocidad1', name:'PIES LIGEROS',    icon:'💨', rarity:'comun',
     desc:'+12% velocidad de movimiento.',
     apply: function(b){ b.velocidadPct += 0.12; } },
+  { id:'cura1',      name:'BOTIQUÍN',        icon:'💊', rarity:'comun',
+    desc:'Al empezar cada piso, +15 de vida extra.',
+    apply: function(b){ b.curaEntrePisos += 15; } },
+  { id:'medidor2',   name:'CORAZÓN DE FUEGO',icon:'🔥', rarity:'comun',
+    desc:'Empiezas cada pelea con 20% del medidor lleno.',
+    apply: function(b){ b.medidorInicial += 0.20; } },
 
-  // RARAS
+  // ============================================================
+  //  RARAS (genéricas)
+  // ============================================================
   { id:'critico',    name:'GOLPE CRÍTICO',   icon:'🎯', rarity:'rara',
     desc:'15% de probabilidad de hacer daño x2.',
     apply: function(b){ b.critChance += 0.15; } },
@@ -140,14 +150,9 @@ const MEJORAS = [
   { id:'regenera',   name:'REGENERACIÓN',    icon:'🌿', rarity:'rara',
     desc:'Recuperas 1.5 de vida por segundo.',
     apply: function(b){ b.regeneracion += 1.5; } },
-  { id:'especial1',  name:'IMPULSO INICIAL', icon:'🔥', rarity:'rara',
-    desc:'Empiezas cada pelea con 40% del medidor lleno.',
-    apply: function(b){ b.medidorInicial += 0.40; } },
   { id:'bloqueo',    name:'MURO DE HIERRO',  icon:'🧱', rarity:'rara',
     desc:'Bloquear reduce el daño un 40% adicional.',
     apply: function(b){ b.bloqueoExtraPct += 0.40; } },
-
-  // RARAS (tipo de ataque)
   { id:'puño1',      name:'PUÑOS DE ACERO',  icon:'👊', rarity:'rara',
     desc:'+40% de daño con puñetazos.',
     apply: function(b){ b.punchPct += 0.40; } },
@@ -160,21 +165,155 @@ const MEJORAS = [
   { id:'combo1',     name:'ESPÍRITU DE COMBO', icon:'🌀', rarity:'rara',
     desc:'Cada golpe del combo suma +5% de daño (max +50%).',
     apply: function(b){ b.comboMasterPct += 0.05; } },
+  { id:'sangrado',   name:'FILO SANGRANTE',  icon:'🔴', rarity:'rara',
+    desc:'Tus golpes aplican sangrado: 1 daño/segundo durante 3s.',
+    apply: function(b){ b.sangradoPct += 1; } },
 
-  // ÉPICA
+  // ============================================================
+  //  ÉPICAS (genéricas)
+  // ============================================================
   { id:'dash1',      name:'SOMBRA FANTASMA', icon:'👻', rarity:'epica',
     desc:'Tu dash es más largo y te da invulnerabilidad breve.',
-    apply: function(b){ b.dashPct += 0.5; b.dashInvuln = true; } }
-];
+    apply: function(b){ b.dashPct += 0.5; b.dashInvuln = true; } },
+  { id:'espejo',     name:'ESCUDO ESPEJO',   icon:'🪞', rarity:'epica',
+    desc:'Reflejas el 15% del daño bloqueado al atacante.',
+    apply: function(b){ b.reflejoPct += 0.15; } },
 
+  // ============================================================
+  //  EXCLUSIVAS: ROCKY (tanque defensivo)
+  // ============================================================
+  { id:'rocky1', name:'MURO ETERNO',    icon:'🏔️', rarity:'rara', soloPara:'rocky',
+    desc:'+20% de reducción de daño adicional.',
+    apply: function(b){ b.defensaPct += 0.20; } },
+  { id:'rocky2', name:'CONTRAATAQUE',   icon:'↩️', rarity:'rara', soloPara:'rocky',
+    desc:'Al bloquear un golpe, devuelves 25% del daño.',
+    apply: function(b){ b.reflejoPct += 0.25; } },
+  { id:'rocky3', name:'CORAZÓN DE PIEDRA', icon:'🪨', rarity:'epica', soloPara:'rocky',
+    desc:'+60 de vida máxima y +10% defensa.',
+    apply: function(b){ b.vidaMax += 60; b.defensaPct += 0.10; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: BLAZE (velocidad y presión)
+  // ============================================================
+  { id:'blaze1', name:'VIENTO CORTANTE', icon:'🌪️', rarity:'rara', soloPara:'blaze',
+    desc:'Tu dash es 50% más rápido y hace daño al pasar.',
+    apply: function(b){ b.dashPct += 0.5; b.dashDaño += 4; } },
+  { id:'blaze2', name:'TRIPLE SALTO',    icon:'🕊️', rarity:'rara', soloPara:'blaze',
+    desc:'Puedes hacer un salto extra en el aire.',
+    apply: function(b){ b.saltosExtra += 1; } },
+  { id:'blaze3', name:'FURIA INCESANTE', icon:'⚡', rarity:'epica', soloPara:'blaze',
+    desc:'+25% velocidad y +20% daño en combos de 3 o más.',
+    apply: function(b){ b.velocidadPct += 0.25; b.velocidadComboPct += 0.20; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: TITAN (fuerza y aguante)
+  // ============================================================
+  { id:'titan1', name:'PIEL DE ROCA',    icon:'🛡️', rarity:'rara', soloPara:'titan',
+    desc:'+80 de vida máxima.',
+    apply: function(b){ b.vidaMax += 80; } },
+  { id:'titan2', name:'SUPER ARMOR',     icon:'💪', rarity:'rara', soloPara:'titan',
+    desc:'Los golpes débiles no te interrumpen.',
+    apply: function(b){ b.superArmorLeve = true; } },
+  { id:'titan3', name:'PUÑOS MONTAÑA',   icon:'🏔️', rarity:'epica', soloPara:'titan',
+    desc:'+60% daño con puñetazos y +30% daño con patadas.',
+    apply: function(b){ b.punchPct += 0.60; b.kickPct += 0.30; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: SHADOW (ninjutsu)
+  // ============================================================
+  { id:'shadow1', name:'HOJA SOMBRÍA',    icon:'🗡️', rarity:'rara', soloPara:'shadow',
+    desc:'+30% de daño con puñetazos y patadas.',
+    apply: function(b){ b.punchPct += 0.30; b.kickPct += 0.30; } },
+  { id:'shadow2', name:'PASO FANTASMA',   icon:'👤', rarity:'rara', soloPara:'shadow',
+    desc:'Tu dash te da invulnerabilidad 0.3s más larga.',
+    apply: function(b){ b.dashInvuln = true; b.dashInvulnExtra += 18; } },
+  { id:'shadow3', name:'KAGE BUNSHIN',    icon:'🌀', rarity:'epica', soloPara:'shadow',
+    desc:'Al usar especial, dejas una copia que golpea al rival.',
+    apply: function(b){ b.clonEspecial = true; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: FROST (hielo y control)
+  // ============================================================
+  { id:'frost1', name:'ESCARCHA PROFUNDA', icon:'❄️', rarity:'rara', soloPara:'frost',
+    desc:'Tus golpes ralentizan al rival el doble.',
+    apply: function(b){ b.slowPct += 1; } },
+  { id:'frost2', name:'VIENTO HELADO',    icon:'🌬️', rarity:'rara', soloPara:'frost',
+    desc:'Ralentizar al rival te da +15% daño sobre él.',
+    apply: function(b){ b.dañoASlow += 0.15; } },
+  { id:'frost3', name:'CERO ABSOLUTO',    icon:'🧊', rarity:'epica', soloPara:'frost',
+    desc:'Tus especiales congelan al rival 2 segundos.',
+    apply: function(b){ b.congelaEspecial = true; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: BOLT (rayo y crítico)
+  // ============================================================
+  { id:'bolt1', name:'RAYO CONTINUO',     icon:'⚡', rarity:'rara', soloPara:'bolt',
+    desc:'Sobrecarga cae cada 3 golpes en vez de cada 4.',
+    apply: function(b){ b.rayoFrecuencia = 3; } },
+  { id:'bolt2', name:'VOLTAJE',           icon:'🔋', rarity:'rara', soloPara:'bolt',
+    desc:'+30% daño cuando tu combo es de 4 o más.',
+    apply: function(b){ b.comboMasterPct += 0.08; } },
+  { id:'bolt3', name:'TORMENTA PERPETUA', icon:'⛈️', rarity:'epica', soloPara:'bolt',
+    desc:'+25% de probabilidad de crítico.',
+    apply: function(b){ b.critChance += 0.25; } },
+
+  // ============================================================
+  //  EXCLUSIVAS: PHOENIX (regeneración y fuego)
+  // ============================================================
+  { id:'phoenix1', name:'FUEGO SAGRADO',   icon:'🔥', rarity:'rara', soloPara:'phoenix',
+    desc:'+2 de regeneración por segundo.',
+    apply: function(b){ b.regeneracion += 2; } },
+  { id:'phoenix2', name:'AVE FÉNIX',       icon:'🦅', rarity:'rara', soloPara:'phoenix',
+    desc:'Al 30% de vida, ganas +30% de daño.',
+    apply: function(b){ b.furiaBajaVida = 0.30; } },
+  { id:'phoenix3', name:'RENACIMIENTO',    icon:'♻️', rarity:'epica', soloPara:'phoenix',
+    desc:'Una vez por piso, si mueres, revives con 40% de vida.',
+    apply: function(b){ b.revivir = true; } }
+];
 // Aplicar mejoras por rareza (probabilidades)
 const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
+
+// ============================================================
+//  SINERGIAS (se activan al tener 2+ mejoras)
+// ============================================================
+const SINERGIAS = [
+  { id:'sin_vampiro_sangre', nombre:'VAMPIRO SANGRIENTO',
+    icon:'🩸', requiere:['vampirismo','sangrado'],
+    desc:'Vampirismo cura el triple y el sangrado dura 6s.',
+    apply: function(b){ b.vampirismo += 0.10; b.sangradoPct += 2; } },
+
+  { id:'sin_critico_combo', nombre:'FURIA CRÍTICA',
+    icon:'⚡', requiere:['critico','combo1'],
+    desc:'+15% crítico y combos largos dan críticos garantizados desde el 5to golpe.',
+    apply: function(b){ b.critChance += 0.15; b.critGarantizadoCombo = true; } },
+
+  { id:'sin_regen_defensa', nombre:'FORTALEZA ETERNA',
+    icon:'🛡️', requiere:['regenera','defensa1'],
+    desc:'+10% defensa y +1 regeneración por segundo.',
+    apply: function(b){ b.defensaPct += 0.10; b.regeneracion += 1; } },
+
+  { id:'sin_dash_sombra', nombre:'SOMBRA LETAL',
+    icon:'👻', requiere:['dash1','puño1'],
+    desc:'Tu dash hace daño y los puñetazos dan +20% más.',
+    apply: function(b){ b.dashDaño += 6; b.punchPct += 0.20; } },
+
+  { id:'sin_sangrado_puño', nombre:'GOLPE CRUENTO',
+    icon:'🔴', requiere:['sangrado','puño1'],
+    desc:'Cada puñetazo aplica sangrado que dura 2s más.',
+    apply: function(b){ b.sangradoPct += 2; } },
+
+  { id:'sin_medidor_especial', nombre:'CORAZÓN DE ACERO',
+    icon:'💥', requiere:['medidor2','medidor1'],
+    desc:'Empiezas cada pelea con el especial ya cargado.',
+    apply: function(b){ b.medidorInicial += 0.60; } }
+];
 
 // ============================================================
 //  SISTEMA DE BONUSES (defaults para Fighter)
 // ============================================================
 function bonusesVacios() {
   return {
+    // Originales
     vidaMax: 0,
     dañoPct: 0,
     medidorPct: 0,
@@ -190,7 +329,27 @@ function bonusesVacios() {
     uppercutPct: 0,
     comboMasterPct: 0,
     dashPct: 0,
-    dashInvuln: false
+    dashInvuln: false,
+    // Nuevos de Fase 2
+    curaEntrePisos: 0,
+    sangradoPct: 0,
+    reflejoPct: 0,
+    dashDaño: 0,
+    dashInvulnExtra: 0,
+    saltosExtra: 0,
+    velocidadComboPct: 0,
+    superArmorLeve: false,
+    clonEspecial: false,
+    slowPct: 0,
+    dañoASlow: 0,
+    congelamiento: 0,
+    congelarEspecial: false,
+    rayoFrecuencia: 4,
+    furiaBajaVida: 0,
+    revivir: false,
+    critGarantizadoCombo: false,
+    // Sinergias aplicadas (registro)
+    sinergiasActivas: []
   };
 }
 
