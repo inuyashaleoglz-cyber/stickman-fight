@@ -24,6 +24,16 @@ function factorPiso(piso) {
   return 1 + (piso - 1) * 0.05;
 }
 
+// ============================================================
+//  DIFICULTAD SEGÚN EL PISO
+// ============================================================
+function dificultadDelPiso(piso) {
+  if (piso <= 5) return 'facil';
+  if (piso <= 12) return 'normal';
+  if (piso <= 22) return 'dificil';
+  return 'pesadilla';
+}
+
 function crearRivalDelPiso(piso, personajeJugadorId) {
   const esFinal = esPisoBossFinal(piso);
   const esBoss  = esPisoBoss(piso);
