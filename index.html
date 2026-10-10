@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stickman Fight</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="menu">
+  <h1>⚔ Stickman Fight</h1>
+  <p class="subtitle">EDICIÓN ULTIMATE · MEJOR DE 3</p>
+  <h2>Elige tu luchador</h2>
+  <div class="char-grid" id="charGrid"></div>
+  <h2>Dificultad</h2>
+  <div class="difficulty-row" id="diffRow">
+    <button class="diff-btn" data-diff="facil">FÁCIL</button>
+    <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+    <button class="diff-btn" data-diff="dificil">DIFÍCIL</button>
+    <button class="diff-btn" data-diff="pesadilla">🔥 PESADILLA</button>
+  </div>
+  <button id="startBtn">PELEAR ▶</button>
+</div>
+
+<div id="gameScreen">
+  <button id="backBtn">← Menú</button>
+  <div class="game-wrap">
+    <canvas id="game" width="950" height="520"></canvas>
+  </div>
+  <div class="controls-info">
+    <div class="ctrl-box"><b>Mover</b><span class="key">A</span><span class="key">D</span></div>
+    <div class="ctrl-box"><b>Saltar</b><span class="key">W</span></div>
+    <div class="ctrl-box"><b>Agachar</b><span class="key">S</span></div>
+    <div class="ctrl-box"><b>Puño</b><span class="key">J</span></div>
+    <div class="ctrl-box"><b>Patada</b><span class="key">K</span></div>
+    <div class="ctrl-box"><b>Uppercut</b><span class="key">U</span></div>
+    <div class="ctrl-box"><b>ESPECIAL</b><span class="key">I</span></div>
+    <div class="ctrl-box"><b>Bloquear</b><span class="key">L</span></div>
+    <div class="ctrl-box"><b>Reiniciar</b><span class="key">R</span></div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fighter.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
