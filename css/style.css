@@ -11,21 +11,45 @@ body { background: #05020a; color: #fff; font-family: 'Segoe UI', system-ui, san
   z-index: 9999; white-space: pre-wrap;
 }
 
+/* ============ MENÚ ============ */
 #menu {
   height: 100vh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 12px; gap: 8px;
   background: radial-gradient(circle at 50% 30%, #2a1a4a 0%, #0d0618 60%, #050208 100%);
+  overflow-y: auto;
 }
 #menu h1 {
-  font-size: clamp(24px, 4.5vh, 44px);
+  font-size: clamp(22px, 4vh, 40px);
   letter-spacing: 4px; text-transform: uppercase; text-align: center;
   background: linear-gradient(90deg, #4ade80, #38bdf8, #f87171);
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 #menu .subtitle { color: #888; font-size: 11px; letter-spacing: 3px; }
 #menu h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-top: 4px; }
+
+.mode-row { display: flex; gap: 10px; margin: 4px 0 6px; flex-wrap: wrap; justify-content: center; }
+.mode-btn {
+  padding: 12px 24px;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #ccc; cursor: pointer;
+  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  transition: all 0.15s; font-family: inherit;
+}
+.mode-btn:hover { background: rgba(255,255,255,0.1); }
+.mode-btn.selected {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #000; border-color: #38bdf8;
+  box-shadow: 0 0 25px rgba(56,189,248,0.6);
+}
+.mode-btn[data-mode="roguelike"].selected {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-color: #fbbf24;
+  box-shadow: 0 0 25px rgba(251,191,36,0.6);
+}
 
 .char-grid {
   display: grid;
@@ -97,8 +121,11 @@ body { background: #05020a; color: #fff; font-family: 'Segoe UI', system-ui, san
   background: rgba(251,191,36,0.08);
   border: 1px solid rgba(251,191,36,0.3);
   border-radius: 8px;
+  text-align: center;
+  max-width: 90vw;
 }
 
+/* ============ JUEGO ============ */
 #gameScreen {
   display: none;
   height: 100vh;
@@ -131,3 +158,98 @@ canvas { display: block; width: 100%; height: 100%; background: #0a0518; }
   color: #fff; cursor: pointer; font-size: 11px; font-family: inherit; z-index: 10;
 }
 #backBtn:hover { background: rgba(255,255,255,0.15); }
+
+/* ============ OVERLAYS ============ */
+.overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(5,2,10,0.92);
+  backdrop-filter: blur(8px);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  gap: 14px;
+}
+.overlay.active { display: flex; }
+
+.overlay-title {
+  font-size: clamp(28px, 5vh, 52px);
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  text-align: center;
+  background: linear-gradient(90deg, #4ade80, #38bdf8);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.overlay-title.red { background: linear-gradient(90deg, #f87171, #dc2626); -webkit-background-clip: text; background-clip: text; }
+.overlay-title.gold { background: linear-gradient(90deg, #fde047, #f59e0b); -webkit-background-clip: text; background-clip: text; }
+
+.overlay-sub {
+  color: #ccc; font-size: 14px; letter-spacing: 2px;
+  text-transform: uppercase; text-align: center;
+}
+
+.overlay-stats {
+  color: #fff; font-size: 15px; text-align: center;
+  line-height: 1.8;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  min-width: 260px;
+}
+.overlay-stats b { color: #fbbf24; }
+
+.overlay-btn {
+  padding: 12px 36px; font-size: 14px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  border: none; border-radius: 10px; color: #000; cursor: pointer;
+  transition: transform 0.15s; font-family: inherit;
+  margin-top: 8px;
+}
+.overlay-btn:hover { transform: scale(1.05); }
+
+/* ============ CARTAS DE MEJORA ============ */
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  width: min(90%, 900px);
+}
+@media (max-width: 700px) { .upgrade-grid { grid-template-columns: 1fr; } }
+
+.upgrade-card {
+  padding: 18px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+.upgrade-card:hover {
+  border-color: #fbbf24;
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 12px 40px rgba(251,191,36,0.3);
+}
+.upgrade-card .icon { font-size: 38px; margin-bottom: 8px; display: block; }
+.upgrade-card .name {
+  font-size: 14px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 6px;
+  color: #fbbf24;
+}
+.upgrade-card .desc { font-size: 11px; color: #ccc; line-height: 1.4; }
+.upgrade-card .rarity {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 9px; padding: 2px 7px; border-radius: 4px;
+  letter-spacing: 1px; text-transform: uppercase; font-weight: 700;
+}
+.upgrade-card .rarity.comun { background: rgba(148,163,184,0.3); color: #cbd5e1; }
+.upgrade-card .rarity.rara { background: rgba(56,189,248,0.3); color: #7dd3fc; }
+.upgrade-card .rarity.epica { background: rgba(168,85,247,0.3); color: #d8b4fe; }
