@@ -23,6 +23,12 @@ class Fighter {
     this.healAccum = 0;
     this.hitCount = 0;
     this.doubleJumpUsed = false;
+    // DASH
+    this.dashTimer = 0;
+    this.dashDir = 0;
+    this.lastATap = 0;
+    this.lastDTap = 0;
+    // IA
     this.aiDecisionTimer = 0;
     this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
     this.aiLastPlayerX = x;
@@ -41,20 +47,38 @@ class Fighter {
     this.enSuelo = true; this.facing = facing;
     this.slowTimer = 0; this.superArmorFrames = 0;
     this.healAccum = 0; this.hitCount = 0; this.doubleJumpUsed = false;
+    this.dashTimer = 0; this.dashDir = 0;
     this.aiDecisionTimer = 0;
   }
 
-  puedeActuar() { return this.estado !== 'hit' && this.estado !== 'attacking'; }
+  puedeActuar() {
+    if (this.estado === 'hit') return false;
+    // Durante recovery de un ataque cancelable que ya conectó, puede cancelar
+    if (this.estado === 'attacking') {
+      if (this.moveFase === 'recovery' && this.yaGolpeo &&
+          this.moveActual && this.moveActual.data.cancelable) {
+        return true;
+      }
+      return false;
+    }
+    return true;
+  }
 
   iniciarMovimiento(nombre, oponente) {
     if (nombre === 'special') return this.iniciarEspecial(oponente);
     const mv = MOVES[nombre];
     if (!mv) return false;
+    // Cancelación: si estamos en recovery cancelable, permitimos el nuevo ataque
+    const estabaCancelando = this.estado === 'attacking' && this.moveFase === 'recovery';
     this.moveActual = {name:nombre, data:mv, frame:0};
     this.moveFase = 'startup';
     this.estado = 'attacking';
     this.estadoTimer = mv.startup + mv.active + mv.recovery;
     this.yaGolpeo = false;
+    // Feedback visual de combo cancel
+    if (estabaCancelando) {
+      spawnParticles(this.x, this.y - 40, 8, this.accent, 4, 0.1);
+    }
     if (nombre === 'uppercut') SFX.upper();
     else if (nombre === 'kick' || nombre === 'sweep') SFX.kick();
     else SFX.punch();
@@ -112,6 +136,7 @@ class Fighter {
     }
     if (this.slowTimer > 0) this.slowTimer--;
     if (this.superArmorFrames > 0) this.superArmorFrames--;
+    if (this.dashTimer > 0) this.dashTimer--;
     if (this.enSuelo) this.doubleJumpUsed = false;
 
     let mover = 0, saltar = false, agacharse = false, bloquear = false, atacar = null;
@@ -121,9 +146,28 @@ class Fighter {
       mover = ia.move; saltar = ia.jump; agacharse = ia.crouch;
       bloquear = ia.block; atacar = ia.move_name;
     } else if (permitirControl) {
-      if (this.estado !== 'attacking' && this.estado !== 'hit') {
+      if (this.puedeActuar()) {
         if (keys['a']) mover -= 1;
         if (keys['d']) mover += 1;
+        // Dash por doble toque
+        if (consumePress('a')) {
+          const now = performance.now();
+          if (now - this.lastATap < 260) {
+            this.dashDir = -1; this.dashTimer = 12;
+            SFX.dash();
+            spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
+          }
+          this.lastATap = now;
+        }
+        if (consumePress('d')) {
+          const now = performance.now();
+          if (now - this.lastDTap < 260) {
+            this.dashDir = 1; this.dashTimer = 12;
+            SFX.dash();
+            spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
+          }
+          this.lastDTap = now;
+        }
         saltar = consumePress('w');
         agacharse = keys['s'];
         bloquear = keys['l'];
@@ -131,10 +175,13 @@ class Fighter {
         else if (consumePress('u')) atacar = agacharse ? 'sweep' : 'uppercut';
         else if (consumePress('k')) atacar = agacharse ? 'sweep' : (this.enSuelo ? 'kick' : 'jumpAttack');
         else if (consumePress('j')) atacar = agacharse ? 'lowPunch' : (this.enSuelo ? 'punch' : 'jumpAttack');
+      } else {
+        // Si no puede actuar normalmente, limpiar presses de ataque
+        consumePress('j'); consumePress('k'); consumePress('u'); consumePress('i');
       }
     }
 
-    if (this.estado === 'attacking' || this.estado === 'hit') {
+    if (this.estado === 'hit') {
       mover = 0; saltar = false; agacharse = false; bloquear = false; atacar = null;
     }
 
@@ -145,10 +192,20 @@ class Fighter {
     if (this.slowTimer > 0) spd *= 0.55;
     if (this.def.id === 'shadow' && mover !== 0 && mover * this.facing < 0) spd *= 1.3;
 
-    let targetVx = mover * spd;
-    if (this.crouching) targetVx = 0;
-    if (this.blocking) targetVx *= 0.3;
-    this.vx = targetVx;
+    // Dash override
+    if (this.dashTimer > 0) {
+      this.vx = this.dashDir * 14;
+      // Dejar rastro
+      if (this.dashTimer % 2 === 0) {
+        spawnParticles(this.x, this.y - 40, 2, this.color, 2, 0.05);
+      }
+    } else {
+      let targetVx = mover * spd;
+      if (this.crouching) targetVx = 0;
+      if (this.blocking) targetVx *= 0.3;
+      this.vx = targetVx;
+    }
+
     this.vy += GRAVITY;
     this.y += this.vy;
     if (this.y >= GROUND) {
@@ -244,97 +301,7 @@ class Fighter {
       this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
     else this.saludGhost = this.salud;
   }
-
-  intentarGolpe(oponente, mv, nombre) {
-    const dist = Math.abs(this.x - oponente.x);
-    const enFrente = (oponente.x - this.x) * this.facing > 0;
-    const yDiff = Math.abs(this.y - oponente.y);
-    if (yDiff > 70 && !mv.jumpHit && !mv.special) return;
-    if (dist > mv.range + 15 || !enFrente) return;
-    if (oponente.crouching && !mv.crouchHit && !mv.special) return;
-    if (!oponente.enSuelo && !mv.jumpHit && !mv.special) return;
-
-    this.yaGolpeo = true;
-    let daño = mv.damage * this.def.dmgMult;
-    if (mv.special) daño *= 1.2;
-    if (this.esIA) daño *= AIS[dificultad].dmgMult;
-    daño = Math.round(daño);
-
-    if (oponente.blocking && ((this.x - oponente.x) * oponente.facing > 0)) {
-      const reducido = Math.max(1, Math.round(daño * 0.18));
-      oponente.salud -= reducido;
-      oponente.invulnerable = 8;
-      this.meter = Math.min(100, this.meter + mv.meterGain * 0.5);
-      oponente.meter = Math.min(100, oponente.meter + 4);
-      const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
-      spawnParticles(hx, hy, 8, '#93c5fd', 4, 0.3);
-      spawnRing(hx, hy, '#93c5fd', 35);
-      spawnDamageNumber(hx, hy - 20, 'BLOQ', '#93c5fd');
-      SFX.block(); shake(2);
-      return;
-    }
-
-    let dmgFinal = daño;
-    if (oponente.def.id === 'rocky') dmgFinal = Math.round(dmgFinal * 0.85);
-    if (oponente.def.id === 'titan') dmgFinal = Math.round(dmgFinal * 0.75);
-
-    oponente.salud -= dmgFinal;
-    if (oponente.salud < 0) oponente.salud = 0;
-
-    const hasArmor = oponente.superArmorFrames > 0;
-    if (!hasArmor) {
-      oponente.invulnerable = 16;
-      oponente.hitFlash = 10;
-      oponente.estado = 'hit';
-      oponente.estadoTimer = 14;
-      if (oponente.def.id !== 'titan' || !oponente.enSuelo) {
-        oponente.x += this.facing * mv.kb;
-        if (oponente.x < WALL_PAD) oponente.x = WALL_PAD;
-        if (oponente.x > W - WALL_PAD) oponente.x = W - WALL_PAD;
-      }
-      if (mv.launch) {
-        oponente.vy = -8; oponente.enSuelo = false;
-        oponente.estado = 'hit'; oponente.estadoTimer = 30;
-      }
-    } else {
-      oponente.invulnerable = 6;
-      oponente.hitFlash = 5;
-    }
-
-    this.meter = Math.min(100, this.meter + mv.meterGain);
-    oponente.meter = Math.min(100, oponente.meter + mv.meterGain * 0.6);
-    this.combo++; this.comboTimer = 90;
-
-    if (this.def.id === 'frost' && !mv.special) {
-      oponente.slowTimer = 120;
-      spawnParticles(oponente.x, oponente.y - 30, 8, '#a5f3fc', 5);
-    }
-    if (mv.special && this.def.id === 'frost') oponente.slowTimer = 200;
-
-    if (this.def.id === 'bolt') {
-      this.hitCount++;
-      if (this.hitCount >= 4) {
-        this.hitCount = 0;
-        oponente.salud -= 5;
-        if (oponente.salud < 0) oponente.salud = 0;
-        spawnLightning(oponente.x, oponente.y - 50, this.color);
-        spawnParticles(oponente.x, oponente.y - 50, 15, this.color, 8);
-        spawnDamageNumber(oponente.x, oponente.y - 100, '⚡5', this.color, true);
-        SFX.hit();
-      }
-    }
-
-    const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
-    spawnParticles(hx, hy, mv.special ? 30 : 14, this.accent, mv.special ? 12 : 7);
-    spawnParticles(hx, hy, 6, '#fff', 5, 0.4);
-    spawnRing(hx, hy, this.accent, mv.special ? 110 : 60);
-    spawnDamageNumber(hx, hy - 15, '-' + dmgFinal, mv.special ? '#fbbf24' : '#fff', dmgFinal >= 12);
-    shake(mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5));
-    SFX.hit();
-  }
-
-  decidirIA(oponente) {
-      intentarGolpe(oponente, mv, nombre) {
+    intentarGolpe(oponente, mv, nombre) {
     const dist = Math.abs(this.x - oponente.x);
     const enFrente = (oponente.x - this.x) * this.facing > 0;
     const yDiff = Math.abs(this.y - oponente.y);
@@ -423,7 +390,6 @@ class Fighter {
   }
 
   recibirDaño(daño, atacante, tipo) {
-    // Bloqueo reduce el daño
     if (this.blocking && atacante && ((atacante.x - this.x) * this.facing < 0)) {
       const reducido = Math.max(1, Math.round(daño * 0.15));
       this.salud -= reducido;
@@ -443,7 +409,6 @@ class Fighter {
     this.hitFlash = 10;
     this.combo = 0;
 
-    // Efectos
     const hx = this.x + (atacante ? Math.sign(this.x - atacante.x) * 15 : 0);
     const hy = this.y - 55;
     spawnParticles(hx, hy, 14, this.accent, 7);
@@ -452,13 +417,15 @@ class Fighter {
     shake(daño >= 12 ? 8 : 5);
     SFX.hit();
 
-    // Combo del atacante
     if (atacante) {
       atacante.combo++;
       atacante.comboTimer = 90;
     }
   }
+
+  decidirIA(oponente) {
     const cfg = AIS[dificultad];
+    const pers = this.def.personality || 'balanced';
     const dist = Math.abs(oponente.x - this.x);
     const dir = Math.sign(oponente.x - this.x);
     const playerVelX = oponente.x - this.aiLastPlayerX;
@@ -469,11 +436,27 @@ class Fighter {
     const oppAttacking = oponente.estado === 'attacking' && oponente.moveFase === 'startup';
     const oppInAir = !oponente.enSuelo;
 
+    // Ajustes por personalidad
+    let aggressionMod = 1, blockMod = 1, keepDist = 0;
+    if (pers === 'rushdown') { aggressionMod = 1.3; blockMod = 0.6; }
+    if (pers === 'defensive') { aggressionMod = 0.7; blockMod = 1.4; }
+    if (pers === 'zoner') { aggressionMod = 0.6; keepDist = 140; }
+    if (pers === 'trickster') { aggressionMod = 1.1; }
+    if (pers === 'technical') { aggressionMod = 1.0; blockMod = 1.1; }
+
     this.aiDecisionTimer--;
     if (this.aiDecisionTimer <= 0) {
       this.aiDecisionTimer = cfg.reaction + Math.random() * 8;
       const saludBaja = this.salud < this.maxHealth * 0.3;
       const meterFull = this.meter >= 100;
+
+      // Zoner: mantener distancia si es posible
+      if (pers === 'zoner' && dist < keepDist && !meterFull) {
+        if (Math.random() < 0.6) {
+          this.aiAction = {move:-dir, jump:false, crouch:false, block:false, move_name:null};
+          return this.aiAction;
+        }
+      }
 
       if (meterFull && Math.random() < cfg.specialUse) {
         if (this.def.id === 'bolt' || this.def.id === 'frost' || dist < 120) {
@@ -481,7 +464,7 @@ class Fighter {
           return this.aiAction;
         }
       }
-      if (oppAttacking && dist < 100 && Math.random() < cfg.blockChance) {
+      if (oppAttacking && dist < 100 && Math.random() < Math.min(0.95, cfg.blockChance * blockMod)) {
         this.aiAction = {move:0, jump:false, crouch:false, block:true, move_name:null};
         return this.aiAction;
       }
@@ -495,20 +478,26 @@ class Fighter {
         return this.aiAction;
       }
 
+      const aggr = Math.min(1, cfg.aggression * aggressionMod);
+
       if (distPred < 55) {
         const r = Math.random();
         if (saludBaja && r < 0.35) {
           this.aiAction = {move:-dir, jump:false, crouch:false, block:false, move_name:null};
-        } else if (r < cfg.aggression) {
-          const moves = ['punch','punch','uppercut','kick'];
+        } else if (r < aggr) {
+          const moves = (pers === 'rushdown') ? ['punch','punch','kick','uppercut'] :
+                        (pers === 'defensive') ? ['punch','kick','uppercut'] :
+                        ['punch','punch','uppercut','kick'];
           const m = moves[Math.floor(Math.random() * moves.length)];
           this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:m};
         } else {
           this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
         }
       } else if (distPred < 90) {
-        if (Math.random() < cfg.aggression * 0.9) {
-          const moves = ['kick','kick','punch','uppercut','sweep'];
+        if (Math.random() < aggr * 0.9) {
+          const moves = (pers === 'rushdown') ? ['kick','kick','sweep','uppercut'] :
+                        (pers === 'technical') ? ['kick','sweep','uppercut','kick'] :
+                        ['kick','kick','punch','uppercut','sweep'];
           const m = moves[Math.floor(Math.random() * moves.length)];
           this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:m};
         } else {
