@@ -23,11 +23,13 @@ class Fighter {
     this.healAccum = 0;
     this.hitCount = 0;
     this.doubleJumpUsed = false;
-    // DASH
     this.dashTimer = 0;
     this.dashDir = 0;
     this.lastATap = 0;
     this.lastDTap = 0;
+    // BONUSES (roguelike)
+    this.bonuses = def.__bonuses || bonusesVacios();
+    this.regenAccum = 0;
     // IA
     this.aiDecisionTimer = 0;
     this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
@@ -37,7 +39,8 @@ class Fighter {
 
   reset(x, facing) {
     this.x = x; this.y = GROUND; this.vx = 0; this.vy = 0;
-    this.salud = this.maxHealth; this.saludGhost = this.maxHealth;
+    this.maxHealth = this.def.maxHealth;
+    this.salud = this.def.maxHealth; this.saludGhost = this.def.maxHealth;
     this.meter = 0;
     this.estado = 'idle'; this.estadoTimer = 0;
     this.moveActual = null; this.moveFase = null; this.yaGolpeo = false;
@@ -48,12 +51,16 @@ class Fighter {
     this.slowTimer = 0; this.superArmorFrames = 0;
     this.healAccum = 0; this.hitCount = 0; this.doubleJumpUsed = false;
     this.dashTimer = 0; this.dashDir = 0;
+    this.regenAccum = 0;
     this.aiDecisionTimer = 0;
+    // Aplicar medidor inicial si hay bonus
+    if (this.bonuses && this.bonuses.medidorInicial > 0) {
+      this.meter = Math.min(100, this.bonuses.medidorInicial * 100);
+    }
   }
 
   puedeActuar() {
     if (this.estado === 'hit') return false;
-    // Durante recovery de un ataque cancelable que ya conectó, puede cancelar
     if (this.estado === 'attacking') {
       if (this.moveFase === 'recovery' && this.yaGolpeo &&
           this.moveActual && this.moveActual.data.cancelable) {
@@ -68,14 +75,12 @@ class Fighter {
     if (nombre === 'special') return this.iniciarEspecial(oponente);
     const mv = MOVES[nombre];
     if (!mv) return false;
-    // Cancelación: si estamos en recovery cancelable, permitimos el nuevo ataque
     const estabaCancelando = this.estado === 'attacking' && this.moveFase === 'recovery';
     this.moveActual = {name:nombre, data:mv, frame:0};
     this.moveFase = 'startup';
     this.estado = 'attacking';
     this.estadoTimer = mv.startup + mv.active + mv.recovery;
     this.yaGolpeo = false;
-    // Feedback visual de combo cancel
     if (estabaCancelando) {
       spawnParticles(this.x, this.y - 40, 8, this.accent, 4, 0.1);
     }
@@ -126,12 +131,20 @@ class Fighter {
   actualizar(oponente, permitirControl) {
     if (this.estado !== 'attacking') this.facing = oponente.x > this.x ? 1 : -1;
 
-    // Phoenix regen
+    // Phoenix regen base
     if (this.def.id === 'phoenix' && this.salud > 0 && this.salud < this.maxHealth) {
       this.healAccum += 0.06;
       if (this.healAccum >= 1) {
         this.salud = Math.min(this.maxHealth, this.salud + 1);
         this.healAccum -= 1;
+      }
+    }
+    // Regeneración por mejoras (roguelike)
+    if (this.bonuses && this.bonuses.regeneracion > 0 && this.salud > 0 && this.salud < this.maxHealth) {
+      this.regenAccum += this.bonuses.regeneracion / 60;
+      if (this.regenAccum >= 1) {
+        this.salud = Math.min(this.maxHealth, this.salud + Math.floor(this.regenAccum));
+        this.regenAccum -= Math.floor(this.regenAccum);
       }
     }
     if (this.slowTimer > 0) this.slowTimer--;
@@ -149,11 +162,12 @@ class Fighter {
       if (this.puedeActuar()) {
         if (keys['a']) mover -= 1;
         if (keys['d']) mover += 1;
-        // Dash por doble toque
         if (consumePress('a')) {
           const now = performance.now();
           if (now - this.lastATap < 260) {
-            this.dashDir = -1; this.dashTimer = 12;
+            this.dashDir = -1;
+            this.dashTimer = 12;
+            if (this.bonuses && this.bonuses.dashInvuln) this.invulnerable = Math.max(this.invulnerable, 10);
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
           }
@@ -162,7 +176,9 @@ class Fighter {
         if (consumePress('d')) {
           const now = performance.now();
           if (now - this.lastDTap < 260) {
-            this.dashDir = 1; this.dashTimer = 12;
+            this.dashDir = 1;
+            this.dashTimer = 12;
+            if (this.bonuses && this.bonuses.dashInvuln) this.invulnerable = Math.max(this.invulnerable, 10);
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
           }
@@ -176,7 +192,6 @@ class Fighter {
         else if (consumePress('k')) atacar = agacharse ? 'sweep' : (this.enSuelo ? 'kick' : 'jumpAttack');
         else if (consumePress('j')) atacar = agacharse ? 'lowPunch' : (this.enSuelo ? 'punch' : 'jumpAttack');
       } else {
-        // Si no puede actuar normalmente, limpiar presses de ataque
         consumePress('j'); consumePress('k'); consumePress('u'); consumePress('i');
       }
     }
@@ -192,10 +207,9 @@ class Fighter {
     if (this.slowTimer > 0) spd *= 0.55;
     if (this.def.id === 'shadow' && mover !== 0 && mover * this.facing < 0) spd *= 1.3;
 
-    // Dash override
     if (this.dashTimer > 0) {
-      this.vx = this.dashDir * 14;
-      // Dejar rastro
+      const mult = 1 + ((this.bonuses && this.bonuses.dashPct) || 0);
+      this.vx = this.dashDir * 14 * mult;
       if (this.dashTimer % 2 === 0) {
         spawnParticles(this.x, this.y - 40, 2, this.color, 2, 0.05);
       }
@@ -312,15 +326,41 @@ class Fighter {
 
     this.yaGolpeo = true;
     let daño = mv.damage * this.def.dmgMult;
+
+    // Bonus de tipo de ataque (roguelike)
+    if (this.bonuses) {
+      if (nombre === 'punch' || nombre === 'lowPunch') daño *= (1 + this.bonuses.punchPct);
+      if (nombre === 'kick' || nombre === 'sweep') daño *= (1 + this.bonuses.kickPct);
+      if (nombre === 'uppercut') daño *= (1 + this.bonuses.uppercutPct);
+      // Combo master
+      if (this.bonuses.comboMasterPct > 0) {
+        const bonus = Math.min(0.5, this.combo * this.bonuses.comboMasterPct);
+        daño *= (1 + bonus);
+      }
+    }
+
     if (mv.special) daño *= 1.2;
     if (this.esIA) daño *= AIS[dificultad].dmgMult;
     daño = Math.round(daño);
 
+    // Crítico (roguelike)
+    let esCritico = false;
+    if (this.bonuses && this.bonuses.critChance > 0) {
+      if (Math.random() < this.bonuses.critChance) {
+        daño *= 2;
+        esCritico = true;
+      }
+    }
+
     if (oponente.blocking && ((this.x - oponente.x) * oponente.facing > 0)) {
-      const reducido = Math.max(1, Math.round(daño * 0.18));
+      let reduccionBloqueo = 0.18;
+      if (oponente.bonuses && oponente.bonuses.bloqueoExtraPct > 0) {
+        reduccionBloqueo += oponente.bonuses.bloqueoExtraPct;
+      }
+      const reducido = Math.max(1, Math.round(daño * (1 - reduccionBloqueo) * 0.3));
       oponente.salud -= reducido;
       oponente.invulnerable = 8;
-      this.meter = Math.min(100, this.meter + mv.meterGain * 0.5);
+      this.meter = Math.min(100, this.meter + mv.meterGain * 0.5 * (1 + (this.bonuses ? this.bonuses.medidorPct : 0)));
       oponente.meter = Math.min(100, oponente.meter + 4);
       const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
       spawnParticles(hx, hy, 8, '#93c5fd', 4, 0.3);
@@ -330,12 +370,24 @@ class Fighter {
       return;
     }
 
+    // Reducciones por personaje
     let dmgFinal = daño;
     if (oponente.def.id === 'rocky') dmgFinal = Math.round(dmgFinal * 0.85);
     if (oponente.def.id === 'titan') dmgFinal = Math.round(dmgFinal * 0.75);
+    // Defensa por mejoras (roguelike)
+    if (oponente.bonuses && oponente.bonuses.defensaPct > 0) {
+      dmgFinal = Math.round(dmgFinal * (1 - oponente.bonuses.defensaPct));
+    }
 
     oponente.salud -= dmgFinal;
     if (oponente.salud < 0) oponente.salud = 0;
+
+    // Vampirismo (roguelike)
+    if (this.bonuses && this.bonuses.vampirismo > 0 && this.salud > 0) {
+      const curacion = Math.max(1, Math.round(dmgFinal * this.bonuses.vampirismo));
+      this.salud = Math.min(this.maxHealth, this.salud + curacion);
+      spawnDamageNumber(this.x, this.y - 110, '+' + curacion, '#4ade80', false);
+    }
 
     const hasArmor = oponente.superArmorFrames > 0;
     if (!hasArmor) {
@@ -357,7 +409,8 @@ class Fighter {
       oponente.hitFlash = 5;
     }
 
-    this.meter = Math.min(100, this.meter + mv.meterGain);
+    const medidorMult = 1 + (this.bonuses ? this.bonuses.medidorPct : 0);
+    this.meter = Math.min(100, this.meter + mv.meterGain * medidorMult);
     oponente.meter = Math.min(100, oponente.meter + mv.meterGain * 0.6);
     this.combo++; this.comboTimer = 90;
 
@@ -384,14 +437,17 @@ class Fighter {
     spawnParticles(hx, hy, mv.special ? 30 : 14, this.accent, mv.special ? 12 : 7);
     spawnParticles(hx, hy, 6, '#fff', 5, 0.4);
     spawnRing(hx, hy, this.accent, mv.special ? 110 : 60);
-    spawnDamageNumber(hx, hy - 15, '-' + dmgFinal, mv.special ? '#fbbf24' : '#fff', dmgFinal >= 12);
-    shake(mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5));
+    const colorDmg = esCritico ? '#ef4444' : (mv.special ? '#fbbf24' : '#fff');
+    spawnDamageNumber(hx, hy - 15, (esCritico ? '¡' : '-') + dmgFinal + (esCritico ? '!' : ''), colorDmg, esCritico || dmgFinal >= 12);
+    shake(esCritico ? 14 : (mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5)));
     SFX.hit();
   }
 
   recibirDaño(daño, atacante, tipo) {
     if (this.blocking && atacante && ((atacante.x - this.x) * this.facing < 0)) {
-      const reducido = Math.max(1, Math.round(daño * 0.15));
+      let reduccion = 0.15;
+      if (this.bonuses && this.bonuses.bloqueoExtraPct > 0) reduccion += this.bonuses.bloqueoExtraPct;
+      const reducido = Math.max(1, Math.round(daño * (1 - reduccion) * 0.3));
       this.salud -= reducido;
       this.invulnerable = 12;
       spawnParticles(this.x + this.facing * 20, this.y - 50, 8, '#93c5fd', 4);
@@ -401,7 +457,12 @@ class Fighter {
       return;
     }
 
-    this.salud -= daño;
+    let dañoFinal = daño;
+    if (this.bonuses && this.bonuses.defensaPct > 0) {
+      dañoFinal = Math.round(dañoFinal * (1 - this.bonuses.defensaPct));
+    }
+
+    this.salud -= dañoFinal;
     if (this.salud < 0) this.salud = 0;
     this.invulnerable = 18;
     this.estado = 'hit';
@@ -413,8 +474,8 @@ class Fighter {
     const hy = this.y - 55;
     spawnParticles(hx, hy, 14, this.accent, 7);
     spawnParticles(hx, hy, 6, '#fff', 5);
-    spawnDamageNumber(hx, hy - 10, '-' + daño, '#fbbf24', daño >= 12);
-    shake(daño >= 12 ? 8 : 5);
+    spawnDamageNumber(hx, hy - 10, '-' + dañoFinal, '#fbbf24', dañoFinal >= 12);
+    shake(dañoFinal >= 12 ? 8 : 5);
     SFX.hit();
 
     if (atacante) {
@@ -436,7 +497,6 @@ class Fighter {
     const oppAttacking = oponente.estado === 'attacking' && oponente.moveFase === 'startup';
     const oppInAir = !oponente.enSuelo;
 
-    // Ajustes por personalidad
     let aggressionMod = 1, blockMod = 1, keepDist = 0;
     if (pers === 'rushdown') { aggressionMod = 1.3; blockMod = 0.6; }
     if (pers === 'defensive') { aggressionMod = 0.7; blockMod = 1.4; }
@@ -450,7 +510,6 @@ class Fighter {
       const saludBaja = this.salud < this.maxHealth * 0.3;
       const meterFull = this.meter >= 100;
 
-      // Zoner: mantener distancia si es posible
       if (pers === 'zoner' && dist < keepDist && !meterFull) {
         if (Math.random() < 0.6) {
           this.aiAction = {move:-dir, jump:false, crouch:false, block:false, move_name:null};
