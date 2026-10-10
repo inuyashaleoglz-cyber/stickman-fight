@@ -376,6 +376,7 @@ function update() {
 
   if (pausado) return;
 
+  if (estadoJuego === 'evento') return;
  // NUEVO: aviso de boss
   if (estadoJuego === 'boss_warning') {
     window.__bossWarningTimer--;
@@ -503,13 +504,24 @@ function render() {
     ctx.translate((Math.random()-0.5)*shakeAmount, (Math.random()-0.5)*shakeAmount);
 
   drawBackground();
+
+  // Aura dorada del elite
+  if (ia && ia.def && ia.def.__esElite && ia.salud > 0) {
+    ctx.save();
+    const pulse = 0.6 + Math.sin(time * 0.15) * 0.4;
+    ctx.globalAlpha = 0.5 * pulse;
+    const grad = ctx.createRadialGradient(ia.x, ia.y - 50, 20, ia.x, ia.y - 50, 100);
+    grad.addColorStop(0, 'rgba(251,191,36,0.7)');
+    grad.addColorStop(1, 'rgba(251,191,36,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(ia.x, ia.y - 50, 100, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   if (jugador) jugador.dibujar(time);
   if (ia) ia.dibujar(time);
-  drawRings();
-  drawProjectiles();
-  drawLightning();
-  drawParticles();
-  drawDamageNumbers();
 
   ctx.restore();
 
@@ -675,6 +687,7 @@ function volverAlMenu() {
   document.getElementById('gameOverOverlay').classList.remove('active');
   document.getElementById('victoryOverlay').classList.remove('active');
   document.getElementById('bossWarningOverlay').classList.remove('active');
+  document.getElementById('descansoOverlay').classList.remove('active');
   jugador = null;
   ia = null;
   run = null;
