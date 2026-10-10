@@ -299,6 +299,24 @@ function nombrePisoBoss(piso){
   return 'CAMPEÓN DEL PISO ' + piso;
 }
 
+// Determinar el tipo de piso (prioriza boss > elite > evento)
+function tipoDePiso(piso) {
+  if (piso <= 0) return 'normal';
+  if (piso % 30 === 0) return 'boss_final';
+  if (piso % 15 === 0) return 'boss';
+  if (piso % 4 === 0) return 'elite';
+  if (piso % 5 === 0) {
+    const n = piso / 5;
+    return (n % 2 === 1) ? 'descanso' : 'tesoro';
+  }
+  return 'normal';
+}
+
+function esPisoElite(piso)   { return tipoDePiso(piso) === 'elite'; }
+function esPisoEvento(piso)  {
+  const t = tipoDePiso(piso);
+  return t === 'descanso' || t === 'tesoro';
+}
 // ============================================================
 //  SINERGIAS (se activan al tener 2+ mejoras)
 // ============================================================
