@@ -299,6 +299,19 @@ function drawHUD() {
   ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
 }
 
+  // Mostrar sinergias activas si estamos en roguelike
+  if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
+    ctx.font = 'bold 11px Segoe UI, sans-serif';
+    ctx.fillStyle = '#d8b4fe';
+    ctx.textAlign = 'left';
+    let texto = '✦ Sinergias: ';
+    run.bonuses.sinergiasActivas.forEach(function(id, idx) {
+      const s = SINERGIAS.find(function(x){ return x.id === id; });
+      if (s) texto += s.icon + ' ' + s.nombre + (idx < run.bonuses.sinergiasActivas.length - 1 ? ' · ' : '');
+    });
+    ctx.fillText(texto, 20, H - 15);
+  }
+
 // ============================================================
 //  MENSAJES Y PAUSA
 // ============================================================
