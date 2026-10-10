@@ -14,6 +14,9 @@ let victoriasIA = 0;
 let mensajeGrande = '';
 let mensajeTimer = 0;
 let time = 0;
+let pausado = false;
+let escenarioActual = 0;
+let comboTopeEstaPartida = 0;
 
 // ============================================================
 //  CICLO DE PARTIDA
@@ -29,6 +32,7 @@ function iniciarRonda() {
   estadoJuego = 'countdown';
   countdownTimer = 180;
   mensajeGrande = ''; mensajeTimer = 0;
+  pausado = false;
   clearPresses();
 }
 
@@ -38,13 +42,51 @@ function iniciarPartida() {
   jugador = new Fighter(personajeJugador, 200, 1, false);
   ia = new Fighter(personajeIA, W - 200, -1, true);
   victoriasJugador = 0; victoriasIA = 0;
+  comboTopeEstaPartida = 0;
+  escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
   iniciarRonda();
 }
 
+function togglePausa() {
+  if (estadoJuego !== 'fighting' && estadoJuego !== 'countdown') return;
+  pausado = !pausado;
+}
+
 // ============================================================
-//  FONDO
+//  FONDOS POR ESCENARIO
 // ============================================================
-function drawBackground() {
+function dibujarSuelo(colorTop, colorBottom, lineaColor) {
+  const groundGrad = ctx.createLinearGradient(0, GROUND, 0, H);
+  groundGrad.addColorStop(0, colorTop);
+  groundGrad.addColorStop(1, colorBottom);
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.save();
+  ctx.shadowColor = lineaColor; ctx.shadowBlur = 15;
+  ctx.strokeStyle = lineaColor; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
+  ctx.restore();
+}
+
+function dibujarMontanas(color1, color2) {
+  ctx.fillStyle = color1;
+  ctx.beginPath(); ctx.moveTo(0, H-100);
+  for (let x = 0; x <= W; x += 60) {
+    const h = 150 + Math.sin(x*0.008 + 1)*40 + Math.cos(x*0.013)*30;
+    ctx.lineTo(x, H - h);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = color2;
+  ctx.beginPath(); ctx.moveTo(0, H-70);
+  for (let x = 0; x <= W; x += 40) {
+    const h = 90 + Math.sin(x*0.02 + 3)*25;
+    ctx.lineTo(x, H - h);
+  }
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+}
+
+function drawBgNoche() {
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, '#1a0f2e');
   sky.addColorStop(0.5, '#2a1a4a');
@@ -73,33 +115,86 @@ function drawBackground() {
   }
   ctx.globalAlpha = 1;
 
-  ctx.fillStyle = '#150a28';
-  ctx.beginPath(); ctx.moveTo(0, H-100);
-  for (let x = 0; x <= W; x += 60) {
-    const h = 150 + Math.sin(x*0.008 + 1)*40 + Math.cos(x*0.013)*30;
-    ctx.lineTo(x, H - h);
+  dibujarMontanas('#150a28', '#0a0518');
+  dibujarSuelo('#1f2937', '#0a0518', '#e94560');
+}
+
+function drawBgTormenta() {
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#0a1128');
+  sky.addColorStop(0.5, '#1a2540');
+  sky.addColorStop(1, '#050810');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+  // Nubes
+  for (let i = 0; i < 8; i++) {
+    const cx = (i * 140 + time * 0.3) % (W + 200) - 100;
+    const cy = 60 + (i % 3) * 30;
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#2a3a5a';
+    ctx.beginPath(); ctx.ellipse(cx, cy, 90, 30, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 40, cy - 10, 70, 25, 0, 0, Math.PI*2); ctx.fill();
   }
-  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
 
-  ctx.fillStyle = '#0a0518';
-  ctx.beginPath(); ctx.moveTo(0, H-70);
-  for (let x = 0; x <= W; x += 40) {
-    const h = 90 + Math.sin(x*0.02 + 3)*25;
-    ctx.lineTo(x, H - h);
+  // Relámpagos ambientales
+  if (Math.floor(time / 90) % 3 === 0 && time % 90 < 5) {
+    ctx.fillStyle = 'rgba(150,200,255,' + (0.3 - (time % 90) * 0.06) + ')';
+    ctx.fillRect(0, 0, W, H * 0.6);
   }
-  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
 
-  const groundGrad = ctx.createLinearGradient(0, GROUND, 0, H);
-  groundGrad.addColorStop(0, '#1f2937');
-  groundGrad.addColorStop(1, '#0a0518');
-  ctx.fillStyle = groundGrad;
-  ctx.fillRect(0, GROUND, W, H - GROUND);
+  // Lluvia
+  ctx.strokeStyle = 'rgba(150,180,220,0.4)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 60; i++) {
+    const rx = (i * 37 + time * 4) % W;
+    const ry = (i * 73 + time * 8) % H;
+    ctx.beginPath();
+    ctx.moveTo(rx, ry);
+    ctx.lineTo(rx - 2, ry + 12);
+    ctx.stroke();
+  }
 
-  ctx.save();
-  ctx.shadowColor = '#e94560'; ctx.shadowBlur = 15;
-  ctx.strokeStyle = '#e94560'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, GROUND); ctx.lineTo(W, GROUND); ctx.stroke();
-  ctx.restore();
+  dibujarMontanas('#0d1a2e', '#050810');
+  dibujarSuelo('#1a2540', '#050810', '#38bdf8');
+}
+
+function drawBgVolcan() {
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#2a0a08');
+  sky.addColorStop(0.5, '#4a1510');
+  sky.addColorStop(1, '#0d0303');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+  // Sol/luna roja
+  const glow = ctx.createRadialGradient(200, 120, 10, 200, 120, 100);
+  glow.addColorStop(0, 'rgba(255,120,40,0.8)');
+  glow.addColorStop(0.4, 'rgba(200,60,20,0.3)');
+  glow.addColorStop(1, 'rgba(255,80,20,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(200, 120, 100, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ff8a3c';
+  ctx.beginPath(); ctx.arc(200, 120, 40, 0, Math.PI*2); ctx.fill();
+
+  // Brasas flotantes
+  for (let i = 0; i < 30; i++) {
+    const bx = (i * 73 + Math.sin(time * 0.02 + i) * 20) % W;
+    const by = (H - (time * 0.5 + i * 40) % H);
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = '#ff6a2a';
+    ctx.fillRect(bx, by, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+
+  dibujarMontanas('#1a0505', '#0a0202');
+  dibujarSuelo('#3a1010', '#0a0202', '#f97316');
+}
+
+function drawBackground() {
+  const id = SCENARIOS[escenarioActual].id;
+  if (id === 'noche') drawBgNoche();
+  else if (id === 'tormenta') drawBgTormenta();
+  else drawBgVolcan();
 }
 
 // ============================================================
@@ -184,10 +279,15 @@ function drawHUD() {
   ctx.font = 'bold 10px Segoe UI, sans-serif';
   ctx.fillStyle = AIS[dificultad].color;
   ctx.fillText(AIS[dificultad].name, W/2, y + barH + 28);
+
+  // Nombre del escenario
+  ctx.font = 'bold 10px Segoe UI, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
 }
 
 // ============================================================
-//  MENSAJES
+//  MENSAJES Y PAUSA
 // ============================================================
 function drawBigMessage() {
   if (!mensajeGrande) return;
@@ -221,6 +321,22 @@ function drawCountdown() {
   ctx.restore();
 }
 
+function drawPausa() {
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '900 80px Segoe UI, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 30;
+  ctx.fillText('PAUSA', W/2, H/2 - 40);
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 20px Segoe UI, sans-serif';
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText('P — Continuar', W/2, H/2 + 30);
+  ctx.fillStyle = '#f87171';
+  ctx.fillText('R — Reiniciar partida', W/2, H/2 + 65);
+}
+
 // ============================================================
 //  UPDATE
 // ============================================================
@@ -231,6 +347,8 @@ function update() {
   if (!jugador || !ia) return;
 
   if (mensajeTimer > 0) mensajeTimer--;
+
+  if (pausado) return;
 
   if (estadoJuego === 'countdown') {
     countdownTimer--;
@@ -244,6 +362,10 @@ function update() {
   if (estadoJuego === 'fighting') {
     jugador.actualizar(ia, true);
     ia.actualizar(jugador, false);
+
+    // Trackear mejor combo de la partida
+    if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
+
     if (jugador.salud <= 0 || ia.salud <= 0) {
       estadoJuego = 'roundover';
       roundTimer = 170;
@@ -270,6 +392,10 @@ function update() {
         estadoJuego = 'matchover';
         mensajeGrande = victoriasJugador >= ROUNDS_TO_WIN ? '¡GANASTE!' : 'PERDISTE';
         mensajeTimer = 999999;
+        // Guardar récord si ganó
+        if (victoriasJugador >= ROUNDS_TO_WIN) {
+          registrarVictoria(personajeJugador.id, comboTopeEstaPartida);
+        }
       } else iniciarRonda();
     }
   }
@@ -306,14 +432,18 @@ function render() {
     ctx.font = '900 90px Segoe UI, sans-serif';
     ctx.fillStyle = ganaste ? '#4ade80' : '#f87171';
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 50;
-    ctx.fillText(mensajeGrande, W/2, H/2 - 60);
+    ctx.fillText(mensajeGrande, W/2, H/2 - 80);
     ctx.shadowBlur = 0;
     ctx.font = 'bold 24px Segoe UI, sans-serif'; ctx.fillStyle = '#fff';
-    ctx.fillText('Rondas: ' + victoriasJugador + ' - ' + victoriasIA, W/2, H/2 + 30);
+    ctx.fillText('Rondas: ' + victoriasJugador + ' - ' + victoriasIA, W/2, H/2 - 10);
+    ctx.font = 'bold 18px Segoe UI, sans-serif'; ctx.fillStyle = '#fbbf24';
+    ctx.fillText('Mejor combo: ' + comboTopeEstaPartida + ' golpes', W/2, H/2 + 30);
     ctx.font = '18px Segoe UI, sans-serif'; ctx.fillStyle = '#aaa';
-    ctx.fillText('Presiona R para jugar otra vez', W/2, H/2 + 80);
-    ctx.fillText('o vuelve al menú para cambiar personaje', W/2, H/2 + 110);
+    ctx.fillText('Presiona R para jugar otra vez', W/2, H/2 + 90);
+    ctx.fillText('o vuelve al menú para cambiar personaje', W/2, H/2 + 120);
   }
+
+  if (pausado) drawPausa();
 }
 
 // ============================================================
@@ -373,8 +503,22 @@ function renderMenu() {
   if (cards[0]) cards[0].classList.add('selected');
 }
 
+function renderRecords() {
+  const r = cargarRecords();
+  const el = document.getElementById('recordsPanel');
+  if (!el) return;
+  if (r.victorias === 0) {
+    el.textContent = '🏆 Sin récords todavía. ¡Gana tu primera pelea!';
+  } else {
+    const fav = r.personajeFav ? CHARACTERS.find(function(c){return c.id === r.personajeFav;}) : null;
+    const favName = fav ? fav.name : '—';
+    el.textContent = '🏆 Victorias: ' + r.victorias + '  ·  Mejor combo: ' + r.mejorCombo + '  ·  Favorito: ' + favName;
+  }
+}
+
 function setupMenu() {
   renderMenu();
+  renderRecords();
 
   document.getElementById('diffRow').addEventListener('click', function(e) {
     if (e.target.classList.contains('diff-btn')) {
@@ -398,6 +542,8 @@ function setupMenu() {
     jugador = null;
     ia = null;
     estadoJuego = 'menu';
+    pausado = false;
+    renderRecords();
   });
 }
 
