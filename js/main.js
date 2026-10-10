@@ -17,9 +17,10 @@ let time = 0;
 let pausado = false;
 let escenarioActual = 0;
 let comboTopeEstaPartida = 0;
+let modoActual = 'rapido'; // 'rapido' | 'roguelike'
 
 // ============================================================
-//  CICLO DE PARTIDA
+//  CICLO DE PARTIDA (DUELO RÁPIDO)
 // ============================================================
 function iniciarRonda() {
   jugador.reset(200, 1);
@@ -37,8 +38,15 @@ function iniciarRonda() {
 }
 
 function iniciarPartida() {
+  // Si estamos en roguelike y hay un run activo, reiniciar el run
+  if (modoActual === 'roguelike') {
+    roguelikeIniciar(personajeJugador.id);
+    return;
+  }
+  // Duelo rápido normal
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
+  personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; }); // sin bonuses
   jugador = new Fighter(personajeJugador, 200, 1, false);
   ia = new Fighter(personajeIA, W - 200, -1, true);
   victoriasJugador = 0; victoriasIA = 0;
@@ -53,7 +61,7 @@ function togglePausa() {
 }
 
 // ============================================================
-//  FONDOS POR ESCENARIO
+//  FONDO
 // ============================================================
 function dibujarSuelo(colorTop, colorBottom, lineaColor) {
   const groundGrad = ctx.createLinearGradient(0, GROUND, 0, H);
@@ -126,7 +134,6 @@ function drawBgTormenta() {
   sky.addColorStop(1, '#050810');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
 
-  // Nubes
   for (let i = 0; i < 8; i++) {
     const cx = (i * 140 + time * 0.3) % (W + 200) - 100;
     const cy = 60 + (i % 3) * 30;
@@ -137,13 +144,11 @@ function drawBgTormenta() {
   }
   ctx.globalAlpha = 1;
 
-  // Relámpagos ambientales
   if (Math.floor(time / 90) % 3 === 0 && time % 90 < 5) {
     ctx.fillStyle = 'rgba(150,200,255,' + (0.3 - (time % 90) * 0.06) + ')';
     ctx.fillRect(0, 0, W, H * 0.6);
   }
 
-  // Lluvia
   ctx.strokeStyle = 'rgba(150,180,220,0.4)';
   ctx.lineWidth = 1;
   for (let i = 0; i < 60; i++) {
@@ -166,7 +171,6 @@ function drawBgVolcan() {
   sky.addColorStop(1, '#0d0303');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
 
-  // Sol/luna roja
   const glow = ctx.createRadialGradient(200, 120, 10, 200, 120, 100);
   glow.addColorStop(0, 'rgba(255,120,40,0.8)');
   glow.addColorStop(0.4, 'rgba(200,60,20,0.3)');
@@ -176,7 +180,6 @@ function drawBgVolcan() {
   ctx.fillStyle = '#ff8a3c';
   ctx.beginPath(); ctx.arc(200, 120, 40, 0, Math.PI*2); ctx.fill();
 
-  // Brasas flotantes
   for (let i = 0; i < 30; i++) {
     const bx = (i * 73 + Math.sin(time * 0.02 + i) * 20) % W;
     const by = (H - (time * 0.5 + i * 40) % H);
@@ -200,7 +203,7 @@ function drawBackground() {
 // ============================================================
 //  HUD
 // ============================================================
-function drawHealthBar(x, y, ancho, alto, salud, saludGhost, maxHealth, color, invertida, nombre, meter, specialName) {
+function drawHealthBar(x, y, ancho, alto, salud, saludGhost, maxHealth, color, invertida, nombre, meter, specialName, piso) {
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.fillRect(x-3, y-3, ancho+6, alto+6);
 
@@ -244,7 +247,8 @@ function drawHealthBar(x, y, ancho, alto, salud, saludGhost, maxHealth, color, i
   ctx.fillStyle = color;
   ctx.textAlign = invertida ? 'right' : 'left';
   const nombreX = invertida ? x + ancho : x;
-  ctx.fillText(nombre, nombreX, y - 10);
+  const textoNombre = piso ? nombre + ' — Piso ' + piso : nombre;
+  ctx.fillText(textoNombre, nombreX, y - 10);
 
   if (meter >= 100) {
     ctx.font = 'bold 11px Segoe UI, sans-serif';
@@ -256,20 +260,30 @@ function drawHealthBar(x, y, ancho, alto, salud, saludGhost, maxHealth, color, i
 
 function drawHUD() {
   const barW = 350, barH = 24, y = 35;
+  const piso = (modoActual === 'roguelike' && run) ? run.piso : null;
   drawHealthBar(30, y, barW, barH, jugador.salud, jugador.saludGhost, jugador.maxHealth,
-    jugador.color, false, jugador.name, jugador.meter, jugador.def.specialName);
+    jugador.color, false, jugador.name, jugador.meter, jugador.def.specialName, piso);
   drawHealthBar(W - 30 - barW, y, barW, barH, ia.salud, ia.saludGhost, ia.maxHealth,
-    ia.color, true, ia.name, ia.meter, ia.def.specialName);
+    ia.color, true, ia.name, ia.meter, ia.def.specialName, null);
 
-  for (let i = 0; i < ROUNDS_TO_WIN; i++) {
-    const px = 30 + barW + 25 + i*26;
-    ctx.beginPath(); ctx.arc(px, y + barH/2, 9, 0, Math.PI*2);
-    ctx.fillStyle = i < victoriasJugador ? jugador.color : 'rgba(255,255,255,0.12)';
-    ctx.fill(); ctx.strokeStyle = jugador.color; ctx.lineWidth = 2; ctx.stroke();
-    const ix = W - 30 - barW - 25 - i*26;
-    ctx.beginPath(); ctx.arc(ix, y + barH/2, 9, 0, Math.PI*2);
-    ctx.fillStyle = i < victoriasIA ? ia.color : 'rgba(255,255,255,0.12)';
-    ctx.fill(); ctx.strokeStyle = ia.color; ctx.lineWidth = 2; ctx.stroke();
+  // En duelo rápido mostramos rondas ganadas; en roguelike mostramos el piso
+  if (modoActual === 'rapido') {
+    for (let i = 0; i < ROUNDS_TO_WIN; i++) {
+      const px = 30 + barW + 25 + i*26;
+      ctx.beginPath(); ctx.arc(px, y + barH/2, 9, 0, Math.PI*2);
+      ctx.fillStyle = i < victoriasJugador ? jugador.color : 'rgba(255,255,255,0.12)';
+      ctx.fill(); ctx.strokeStyle = jugador.color; ctx.lineWidth = 2; ctx.stroke();
+      const ix = W - 30 - barW - 25 - i*26;
+      ctx.beginPath(); ctx.arc(ix, y + barH/2, 9, 0, Math.PI*2);
+      ctx.fillStyle = i < victoriasIA ? ia.color : 'rgba(255,255,255,0.12)';
+      ctx.fill(); ctx.strokeStyle = ia.color; ctx.lineWidth = 2; ctx.stroke();
+    }
+  } else if (modoActual === 'roguelike' && run) {
+    // Mostrar progreso de pisos
+    ctx.font = 'bold 13px Segoe UI, sans-serif';
+    ctx.fillStyle = '#fbbf24';
+    ctx.textAlign = 'center';
+    ctx.fillText('PISO ' + run.piso + ' / ' + MAX_PISO, W/2, y + barH + 26);
   }
 
   ctx.font = 'bold 22px Segoe UI, sans-serif';
@@ -278,9 +292,8 @@ function drawHUD() {
 
   ctx.font = 'bold 10px Segoe UI, sans-serif';
   ctx.fillStyle = AIS[dificultad].color;
-  ctx.fillText(AIS[dificultad].name, W/2, y + barH + 28);
+  ctx.fillText(AIS[dificultad].name, W/2, y + barH + 12);
 
-  // Nombre del escenario
   ctx.font = 'bold 10px Segoe UI, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
@@ -334,7 +347,7 @@ function drawPausa() {
   ctx.fillStyle = '#4ade80';
   ctx.fillText('P — Continuar', W/2, H/2 + 30);
   ctx.fillStyle = '#f87171';
-  ctx.fillText('R — Reiniciar partida', W/2, H/2 + 65);
+  ctx.fillText('R — Reiniciar', W/2, H/2 + 65);
 }
 
 // ============================================================
@@ -363,19 +376,29 @@ function update() {
     jugador.actualizar(ia, true);
     ia.actualizar(jugador, false);
 
-    // Trackear mejor combo de la partida
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
+    if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
+      run.comboTope = jugador.combo;
+    }
 
     if (jugador.salud <= 0 || ia.salud <= 0) {
       estadoJuego = 'roundover';
       roundTimer = 170;
       SFX.ko(); shake(20);
+
+      const jugadorGano = ia.salud <= 0 && jugador.salud > 0;
+
       if (jugador.salud <= 0 && ia.salud <= 0) mensajeGrande = 'EMPATE';
       else if (jugador.salud <= 0) { mensajeGrande = 'K.O.'; victoriasIA++; }
       else { mensajeGrande = '¡K.O.!'; victoriasJugador++; }
       mensajeTimer = 170;
       const dead = jugador.salud <= 0 ? jugador : ia;
       spawnParticles(dead.x, dead.y - 55, 40, dead.accent, 12);
+
+      // En roguelike, guardar resultado para procesarlo al terminar el roundover
+      if (modoActual === 'roguelike') {
+        window.__roguelikeGanador = jugadorGano ? 'jugador' : 'ia';
+      }
     }
     return;
   }
@@ -388,11 +411,23 @@ function update() {
       if (f.saludGhost > f.salud) f.saludGhost -= 0.6;
     });
     if (roundTimer <= 0) {
+      // MODO ROGUELIKE: procesar fin de piso
+      if (modoActual === 'roguelike' && run && run.activo) {
+        const ganador = window.__roguelikeGanador;
+        window.__roguelikeGanador = null;
+        if (ganador === 'jugador') {
+          roguelikeAlTerminarPiso('jugador');
+        } else {
+          roguelikeAlTerminarPiso('ia');
+        }
+        return;
+      }
+
+      // DUELO RÁPIDO: flujo normal
       if (victoriasJugador >= ROUNDS_TO_WIN || victoriasIA >= ROUNDS_TO_WIN) {
         estadoJuego = 'matchover';
         mensajeGrande = victoriasJugador >= ROUNDS_TO_WIN ? '¡GANASTE!' : 'PERDISTE';
         mensajeTimer = 999999;
-        // Guardar récord si ganó
         if (victoriasJugador >= ROUNDS_TO_WIN) {
           registrarVictoria(personajeJugador.id, comboTopeEstaPartida);
         }
@@ -424,7 +459,7 @@ function render() {
   if (estadoJuego === 'countdown') drawCountdown();
   if (estadoJuego === 'roundover') drawBigMessage();
 
-  if (estadoJuego === 'matchover') {
+  if (estadoJuego === 'matchover' && modoActual === 'rapido') {
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -507,12 +542,19 @@ function renderRecords() {
   const r = cargarRecords();
   const el = document.getElementById('recordsPanel');
   if (!el) return;
-  if (r.victorias === 0) {
+  if (r.victorias === 0 && r.mejorPisoRoguelike === 0) {
     el.textContent = '🏆 Sin récords todavía. ¡Gana tu primera pelea!';
   } else {
     const fav = r.personajeFav ? CHARACTERS.find(function(c){return c.id === r.personajeFav;}) : null;
     const favName = fav ? fav.name : '—';
-    el.textContent = '🏆 Victorias: ' + r.victorias + '  ·  Mejor combo: ' + r.mejorCombo + '  ·  Favorito: ' + favName;
+    let texto = '🏆 Duelos ganados: ' + r.victorias + '  ·  Mejor combo: ' + r.mejorCombo;
+    if (r.mejorPisoRoguelike > 0) {
+      texto += '  ·  Roguelike: piso ' + r.mejorPisoRoguelike + '/30';
+    }
+    if (r.roguelikesGanados > 0) {
+      texto += '  ·  🎖️ ' + r.roguelikesGanados + ' conquistas';
+    }
+    el.textContent = texto;
   }
 }
 
@@ -520,6 +562,21 @@ function setupMenu() {
   renderMenu();
   renderRecords();
 
+  // Selector de modo
+  document.getElementById('modeRow').addEventListener('click', function(e) {
+    if (e.target.classList.contains('mode-btn')) {
+      const btns = document.querySelectorAll('.mode-btn');
+      for (let i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
+      e.target.classList.add('selected');
+      modoActual = e.target.dataset.mode;
+      // Ocultar/mostrar dificultad (en roguelike la controla el piso)
+      const diffRow = document.getElementById('diffRow');
+      diffRow.style.opacity = (modoActual === 'roguelike') ? '0.3' : '1';
+      diffRow.style.pointerEvents = (modoActual === 'roguelike') ? 'none' : 'auto';
+    }
+  });
+
+  // Selector de dificultad
   document.getElementById('diffRow').addEventListener('click', function(e) {
     if (e.target.classList.contains('diff-btn')) {
       const btns = document.querySelectorAll('.diff-btn');
@@ -529,6 +586,7 @@ function setupMenu() {
     }
   });
 
+  // Botón empezar
   document.getElementById('startBtn').addEventListener('click', function() {
     initAudio();
     document.getElementById('menu').style.display = 'none';
@@ -536,15 +594,34 @@ function setupMenu() {
     iniciarPartida();
   });
 
+  // Botón volver
   document.getElementById('backBtn').addEventListener('click', function() {
-    document.getElementById('gameScreen').classList.remove('active');
-    document.getElementById('menu').style.display = 'flex';
-    jugador = null;
-    ia = null;
-    estadoJuego = 'menu';
-    pausado = false;
-    renderRecords();
+    volverAlMenu();
   });
+
+  // Botones de overlay
+  document.getElementById('goMenuBtn').addEventListener('click', function() {
+    document.getElementById('gameOverOverlay').classList.remove('active');
+    volverAlMenu();
+  });
+  document.getElementById('victoryMenuBtn').addEventListener('click', function() {
+    document.getElementById('victoryOverlay').classList.remove('active');
+    volverAlMenu();
+  });
+}
+
+function volverAlMenu() {
+  document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('menu').style.display = 'flex';
+  document.getElementById('upgradeOverlay').classList.remove('active');
+  document.getElementById('gameOverOverlay').classList.remove('active');
+  document.getElementById('victoryOverlay').classList.remove('active');
+  jugador = null;
+  ia = null;
+  run = null;
+  estadoJuego = 'menu';
+  pausado = false;
+  renderRecords();
 }
 
 // ============================================================
