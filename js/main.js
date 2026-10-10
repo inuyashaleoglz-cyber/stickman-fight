@@ -376,6 +376,18 @@ function update() {
 
   if (pausado) return;
 
+ // NUEVO: aviso de boss
+  if (estadoJuego === 'boss_warning') {
+    window.__bossWarningTimer--;
+    if (window.__bossWarningTimer <= 0) {
+      ocultarAvisoBoss();
+      estadoJuego = 'countdown';
+      countdownTimer = 180;
+      clearPresses();
+    }
+    return;
+  }
+  
   if (estadoJuego === 'countdown') {
     countdownTimer--;
     if (countdownTimer % 60 === 0 && countdownTimer > 0) SFX.count();
@@ -390,6 +402,38 @@ function update() {
     ia.actualizar(jugador, false);
 
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
+        // NUEVO: cambio de fase del boss final
+    if (modoActual === 'roguelike' && run && run.esBossPisoFinal) {
+      const hpPct = ia.salud / ia.maxHealth;
+      if (ia.faseActual === undefined) ia.faseActual = 1;
+
+      if (ia.faseActual === 1 && hpPct < 0.66) {
+        ia.faseActual = 2;
+        ia.color = '#f97316'; ia.accent = '#fb923c';
+        ia.def.dmgMult *= 1.20;
+        ia.def.speed *= 1.10;
+        spawnParticles(ia.x, ia.y - 55, 40, '#f97316', 14);
+        spawnRing(ia.x, ia.y - 55, '#f97316', 180);
+        shake(20);
+        SFX.special();
+        mensajeGrande = '¡FASE 2!';
+        mensajeTimer = 90;
+      } else if (ia.faseActual === 2 && hpPct < 0.33) {
+        ia.faseActual = 3;
+        ia.color = '#ef4444'; ia.accent = '#dc2626';
+        ia.def.dmgMult *= 1.20;
+        ia.def.speed *= 1.10;
+        ia.maxHealth += 40; // un poco más de vida
+        ia.salud += 40;
+        ia.saludGhost += 40;
+        spawnParticles(ia.x, ia.y - 55, 60, '#ef4444', 16);
+        spawnRing(ia.x, ia.y - 55, '#ef4444', 220);
+        shake(25);
+        SFX.special();
+        mensajeGrande = '¡FASE 3!';
+        mensajeTimer = 90;
+      }
+    }
     if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
       run.comboTope = jugador.combo;
     }
@@ -630,6 +674,7 @@ function volverAlMenu() {
   document.getElementById('upgradeOverlay').classList.remove('active');
   document.getElementById('gameOverOverlay').classList.remove('active');
   document.getElementById('victoryOverlay').classList.remove('active');
+  document.getElementById('bossWarningOverlay').classList.remove('active');
   jugador = null;
   ia = null;
   run = null;
