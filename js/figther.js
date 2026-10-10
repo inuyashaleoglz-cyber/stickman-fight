@@ -1,6 +1,3 @@
-// ============================================================
-//  CLASE FIGHTER (lógica de cada luchador, jugador o IA)
-// ============================================================
 class Fighter {
   constructor(def, x, facing, esIA) {
     this.def = def;
@@ -27,7 +24,7 @@ class Fighter {
     this.hitCount = 0;
     this.doubleJumpUsed = false;
     this.aiDecisionTimer = 0;
-    this.aiAction = { move: 0, jump: false, crouch: false, block: false, move_name: null };
+    this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
     this.aiLastPlayerX = x;
     this.aiPlayerVelX = 0;
   }
@@ -53,7 +50,7 @@ class Fighter {
     if (nombre === 'special') return this.iniciarEspecial(oponente);
     const mv = MOVES[nombre];
     if (!mv) return false;
-    this.moveActual = { name: nombre, data: mv, frame: 0 };
+    this.moveActual = {name:nombre, data:mv, frame:0};
     this.moveFase = 'startup';
     this.estado = 'attacking';
     this.estadoTimer = mv.startup + mv.active + mv.recovery;
@@ -68,14 +65,17 @@ class Fighter {
     if (this.meter < 100) return false;
     this.meter = 0;
     const sp = this.def.special;
-    const data = { ...MOVES.special, damage: sp.damage, range: sp.range, launch: sp.launch,
-      skipMelee: sp.projectile || sp.lightning };
-    this.moveActual = { name: 'special', data, frame: 0 };
+    const data = Object.assign({}, MOVES.special, {
+      damage: sp.damage, range: sp.range, launch: sp.launch,
+      skipMelee: sp.projectile || sp.lightning
+    });
+    this.moveActual = {name:'special', data:data, frame:0};
     this.moveFase = 'startup';
     this.estado = 'attacking';
     this.estadoTimer = data.startup + data.active + data.recovery;
     this.yaGolpeo = false;
     SFX.special();
+
     const id = this.def.id;
     if (id === 'rocky' && sp.superArmor) {
       this.superArmorFrames = data.startup + data.active + 20;
@@ -102,7 +102,7 @@ class Fighter {
   actualizar(oponente, permitirControl) {
     if (this.estado !== 'attacking') this.facing = oponente.x > this.x ? 1 : -1;
 
-    // Habilidades pasivas
+    // Phoenix regen
     if (this.def.id === 'phoenix' && this.salud > 0 && this.salud < this.maxHealth) {
       this.healAccum += 0.06;
       if (this.healAccum >= 1) {
@@ -114,11 +114,12 @@ class Fighter {
     if (this.superArmorFrames > 0) this.superArmorFrames--;
     if (this.enSuelo) this.doubleJumpUsed = false;
 
-    // Entradas
     let mover = 0, saltar = false, agacharse = false, bloquear = false, atacar = null;
+
     if (this.esIA) {
       const ia = this.decidirIA(oponente);
-      mover = ia.move; saltar = ia.jump; agacharse = ia.crouch; bloquear = ia.block; atacar = ia.move_name;
+      mover = ia.move; saltar = ia.jump; agacharse = ia.crouch;
+      bloquear = ia.block; atacar = ia.move_name;
     } else if (permitirControl) {
       if (this.estado !== 'attacking' && this.estado !== 'hit') {
         if (keys['a']) mover -= 1;
@@ -140,10 +141,10 @@ class Fighter {
     this.crouching = agacharse && this.enSuelo;
     this.blocking = bloquear && this.enSuelo && !this.crouching;
 
-    // Física
     let spd = this.def.speed;
     if (this.slowTimer > 0) spd *= 0.55;
     if (this.def.id === 'shadow' && mover !== 0 && mover * this.facing < 0) spd *= 1.3;
+
     let targetVx = mover * spd;
     if (this.crouching) targetVx = 0;
     if (this.blocking) targetVx *= 0.3;
@@ -155,7 +156,6 @@ class Fighter {
       this.y = GROUND; this.vy = 0; this.enSuelo = true;
     }
 
-    // Salto (con doble salto para Blaze)
     if (saltar) {
       if (this.enSuelo && !this.crouching) {
         this.vy = this.def.jumpPower;
@@ -175,13 +175,11 @@ class Fighter {
     if (this.x < WALL_PAD) this.x = WALL_PAD;
     if (this.x > W - WALL_PAD) this.x = W - WALL_PAD;
 
-    // Iniciar ataque
     if (atacar && this.puedeActuar()) {
       if (!this.enSuelo && atacar !== 'special' && atacar !== 'jumpAttack') atacar = 'jumpAttack';
       this.iniciarMovimiento(atacar, oponente);
     }
 
-    // Progreso del ataque
     if (this.estado === 'attacking' && this.moveActual) {
       this.moveActual.frame++;
       const mv = this.moveActual.data;
@@ -190,7 +188,6 @@ class Fighter {
       else if (f <= mv.startup + mv.active) {
         this.moveFase = 'active';
 
-        // Frost: proyectil
         if (mv.special && this.def.id === 'frost' && f === mv.startup && !this.yaGolpeo) {
           this.yaGolpeo = true;
           const p = this.def.special;
@@ -201,7 +198,6 @@ class Fighter {
             color: this.color, accent: this.accent
           });
         }
-        // Bolt: rayo instantáneo
         if (mv.special && this.def.id === 'bolt' && f === mv.startup + 2 && !this.yaGolpeo) {
           this.yaGolpeo = true;
           const p = this.def.special;
@@ -214,7 +210,6 @@ class Fighter {
             if (p.launch) { oponente.vy = -9; oponente.enSuelo = false; }
           }
         }
-        // Melee normal
         if (!mv.skipMelee && !this.yaGolpeo) {
           this.intentarGolpe(oponente, mv, this.moveActual.name);
         }
@@ -225,7 +220,6 @@ class Fighter {
       }
     }
 
-    // Timers
     if (this.invulnerable > 0) this.invulnerable--;
     if (this.hitFlash > 0) this.hitFlash--;
     if (this.comboTimer > 0) { this.comboTimer--; if (this.comboTimer === 0) this.combo = 0; }
@@ -233,8 +227,8 @@ class Fighter {
     if (Math.abs(this.vx) > 0.5 && this.enSuelo) this.walkCycle += 0.22;
     else if (this.estado === 'idle') this.walkCycle += 0.05;
 
-    // Estado visual
-    if (['idle', 'walk', 'crouch', 'block', 'jump'].includes(this.estado)) {
+    if (this.estado === 'idle' || this.estado === 'walk' || this.estado === 'crouch' ||
+        this.estado === 'block' || this.estado === 'jump') {
       if (!this.enSuelo) this.estado = 'jump';
       else if (this.crouching) this.estado = 'crouch';
       else if (this.blocking) this.estado = 'block';
@@ -246,7 +240,8 @@ class Fighter {
       if (this.estadoTimer <= 0) this.estado = 'idle';
     }
 
-    if (this.saludGhost > this.salud) this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
+    if (this.saludGhost > this.salud)
+      this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
     else this.saludGhost = this.salud;
   }
 
@@ -260,13 +255,11 @@ class Fighter {
     if (!oponente.enSuelo && !mv.jumpHit && !mv.special) return;
 
     this.yaGolpeo = true;
-
     let daño = mv.damage * this.def.dmgMult;
     if (mv.special) daño *= 1.2;
     if (this.esIA) daño *= AIS[dificultad].dmgMult;
     daño = Math.round(daño);
 
-    // Bloqueo
     if (oponente.blocking && ((this.x - oponente.x) * oponente.facing > 0)) {
       const reducido = Math.max(1, Math.round(daño * 0.18));
       oponente.salud -= reducido;
@@ -281,7 +274,6 @@ class Fighter {
       return;
     }
 
-    // Reducciones por personaje
     let dmgFinal = daño;
     if (oponente.def.id === 'rocky') dmgFinal = Math.round(dmgFinal * 0.85);
     if (oponente.def.id === 'titan') dmgFinal = Math.round(dmgFinal * 0.75);
@@ -360,50 +352,50 @@ class Fighter {
       const meterFull = this.meter >= 100;
 
       if (meterFull && Math.random() < cfg.specialUse) {
-        if (['bolt', 'frost'].includes(this.def.id) || dist < 120) {
-          this.aiAction = { move: dir, jump: false, crouch: false, block: false, move_name: 'special' };
+        if (this.def.id === 'bolt' || this.def.id === 'frost' || dist < 120) {
+          this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:'special'};
           return this.aiAction;
         }
       }
       if (oppAttacking && dist < 100 && Math.random() < cfg.blockChance) {
-        this.aiAction = { move: 0, jump: false, crouch: false, block: true, move_name: null };
+        this.aiAction = {move:0, jump:false, crouch:false, block:true, move_name:null};
         return this.aiAction;
       }
       if (oppAttacking && oponente.moveActual && oponente.moveActual.data.low &&
           Math.random() < cfg.dodgeChance && this.enSuelo) {
-        this.aiAction = { move: 0, jump: true, crouch: false, block: false, move_name: null };
+        this.aiAction = {move:0, jump:true, crouch:false, block:false, move_name:null};
         return this.aiAction;
       }
       if (oppInAir && dist < 90 && Math.random() < 0.5) {
-        this.aiAction = { move: 0, jump: false, crouch: false, block: false, move_name: 'uppercut' };
+        this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:'uppercut'};
         return this.aiAction;
       }
 
       if (distPred < 55) {
         const r = Math.random();
         if (saludBaja && r < 0.35) {
-          this.aiAction = { move: -dir, jump: false, crouch: false, block: false, move_name: null };
+          this.aiAction = {move:-dir, jump:false, crouch:false, block:false, move_name:null};
         } else if (r < cfg.aggression) {
-          const moves = ['punch', 'punch', 'uppercut', 'kick'];
+          const moves = ['punch','punch','uppercut','kick'];
           const m = moves[Math.floor(Math.random() * moves.length)];
-          this.aiAction = { move: 0, jump: false, crouch: false, block: false, move_name: m };
+          this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:m};
         } else {
-          this.aiAction = { move: 0, jump: false, crouch: false, block: false, move_name: null };
+          this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
         }
       } else if (distPred < 90) {
         if (Math.random() < cfg.aggression * 0.9) {
-          const moves = ['kick', 'kick', 'punch', 'uppercut', 'sweep'];
+          const moves = ['kick','kick','punch','uppercut','sweep'];
           const m = moves[Math.floor(Math.random() * moves.length)];
-          this.aiAction = { move: dir, jump: false, crouch: false, block: false, move_name: m };
+          this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:m};
         } else {
-          this.aiAction = { move: dir, jump: false, crouch: false, block: false, move_name: null };
+          this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:null};
         }
       } else {
         const r = Math.random();
         if (r < 0.15 && this.enSuelo && dist > 180) {
-          this.aiAction = { move: dir, jump: true, crouch: false, block: false, move_name: null };
+          this.aiAction = {move:dir, jump:true, crouch:false, block:false, move_name:null};
         } else {
-          this.aiAction = { move: dir, jump: false, crouch: false, block: false, move_name: null };
+          this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:null};
         }
       }
     }
@@ -411,7 +403,7 @@ class Fighter {
     let move = this.aiAction.move;
     if (move !== 0) move *= cfg.speedMult;
     return {
-      move,
+      move: move,
       jump: this.aiAction.jump && this.aiDecisionTimer === cfg.reaction + 7,
       crouch: this.aiAction.crouch,
       block: this.aiAction.block,
@@ -422,23 +414,24 @@ class Fighter {
   dibujar(t) {
     ctx.save();
     ctx.translate(this.x, this.y);
+
     ctx.save();
     ctx.globalAlpha = 0.4;
     ctx.fillStyle = '#000';
     const sScale = this.enSuelo ? 1 : Math.max(0.3, 1 - (GROUND - this.y) / 200);
-    ctx.beginPath(); ctx.ellipse(0, 0, 24 * sScale, 6 * sScale, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 24*sScale, 6*sScale, 0, 0, Math.PI*2); ctx.fill();
     ctx.restore();
 
     ctx.scale(this.facing, 1);
     const flash = this.hitFlash > 0;
-    const invulnBlink = this.invulnerable > 0 && Math.floor(this.invulnerable / 3) % 2 === 0;
+    const invulnBlink = this.invulnerable > 0 && Math.floor(this.invulnerable/3)%2 === 0;
     const bodyColor = flash ? '#fff' : (invulnBlink ? 'rgba(255,255,255,0.6)' : this.color);
     const accentColor = flash ? '#fff' : this.accent;
     ctx.shadowColor = accentColor;
-    ctx.shadowBlur = flash ? 25 : (this.meter >= 100 ? 20 + Math.sin(t * 0.15) * 8 : 8);
+    ctx.shadowBlur = flash ? 25 : (this.meter >= 100 ? 20 + Math.sin(t*0.15)*8 : 8);
 
     const crouchOffset = (this.crouching || this.estado === 'crouch') ? 15 : 0;
-    const headBob = Math.sin(t * 0.08) * 1.2;
+    const headBob = Math.sin(t*0.08) * 1.2;
 
     let legFront = 0, legBack = 0, armFront = 0, armBack = 0;
     if (this.estado === 'walk') {
@@ -447,10 +440,10 @@ class Fighter {
       armFront = -Math.sin(this.walkCycle) * 10;
       armBack = Math.sin(this.walkCycle) * 10;
     } else if (this.estado === 'idle') {
-      legFront = Math.sin(t * 0.06) * 1.5;
-      legBack = -Math.sin(t * 0.06) * 1.5;
-      armFront = Math.sin(t * 0.06) * 2;
-      armBack = -Math.sin(t * 0.06) * 2;
+      legFront = Math.sin(t*0.06) * 1.5;
+      legBack = -Math.sin(t*0.06) * 1.5;
+      armFront = Math.sin(t*0.06) * 2;
+      armBack = -Math.sin(t*0.06) * 2;
     } else if (this.estado === 'jump') {
       legFront = -8; legBack = 8; armFront = 10; armBack = -10;
     }
@@ -459,9 +452,9 @@ class Fighter {
     if (this.estado === 'attacking' && this.moveActual) moveType = this.moveActual.name;
 
     let upperExtend = 0;
-    if (moveType === 'uppercut') {
+    if (moveType === 'uppercut')
       upperExtend = Math.min(1, this.moveActual.frame / (this.moveActual.data.startup + 4));
-    }
+
     let punchExtend = 0;
     if (moveType === 'punch' || moveType === 'lowPunch') {
       const f = this.moveActual.frame, st = this.moveActual.data.startup, ac = this.moveActual.data.active;
@@ -474,15 +467,17 @@ class Fighter {
       if (f > st && f <= st + ac) kickExtend = 1;
       else if (f > st + ac) kickExtend = Math.max(0, 1 - (f - st - ac) / this.moveActual.data.recovery);
     }
-    let specialGlow = 0;
-    if (moveType === 'special') specialGlow = 1;
+    let specialGlow = moveType === 'special' ? 1 : 0;
 
     const headY = -78 + headBob + crouchOffset;
-    ctx.beginPath(); ctx.arc(0, headY, 11, 0, Math.PI * 2);
+    ctx.beginPath(); ctx.arc(0, headY, 11, 0, Math.PI*2);
     ctx.fillStyle = bodyColor; ctx.fill();
     ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(3, headY - 2, 1.8, 0, Math.PI * 2); ctx.arc(6, headY - 2, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(3, headY-2, 1.8, 0, Math.PI*2);
+    ctx.arc(6, headY-2, 1.8, 0, Math.PI*2);
+    ctx.fill();
 
     ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = bodyColor;
     ctx.beginPath();
@@ -493,7 +488,7 @@ class Fighter {
     ctx.strokeStyle = accentColor; ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(0, -60 + crouchOffset);
-    ctx.quadraticCurveTo(-10 + armBack * 0.4, -45 + crouchOffset, -12 + armBack, -30 + crouchOffset);
+    ctx.quadraticCurveTo(-10 + armBack*0.4, -45 + crouchOffset, -12 + armBack, -30 + crouchOffset);
     ctx.stroke();
 
     ctx.strokeStyle = bodyColor;
@@ -503,24 +498,24 @@ class Fighter {
       ctx.quadraticCurveTo(14, -55 + crouchOffset, 12, -40 + crouchOffset);
     } else if (moveType === 'uppercut') {
       const ang = -0.5 - upperExtend * 1.5;
-      const hx = Math.cos(ang) * 30, hy = Math.sin(ang) * 30;
-      ctx.quadraticCurveTo(hx * 0.4, -45 + crouchOffset + hy * 0.3, hx, -55 + crouchOffset + hy);
+      const hx = Math.cos(ang)*30, hy = Math.sin(ang)*30;
+      ctx.quadraticCurveTo(hx*0.4, -45 + crouchOffset + hy*0.3, hx, -55 + crouchOffset + hy);
     } else if (punchExtend > 0) {
       const ext = punchExtend * 30;
-      ctx.quadraticCurveTo(10 + ext * 0.5, -50 + crouchOffset, 15 + ext, -45 + crouchOffset);
+      ctx.quadraticCurveTo(10 + ext*0.5, -50 + crouchOffset, 15 + ext, -45 + crouchOffset);
     } else {
-      ctx.quadraticCurveTo(10 + armFront * 0.5, -48 + crouchOffset, 15 + armFront, -38 + crouchOffset);
+      ctx.quadraticCurveTo(10 + armFront*0.5, -48 + crouchOffset, 15 + armFront, -38 + crouchOffset);
     }
     ctx.stroke();
 
     if (moveType === 'uppercut') {
       const ang = -0.5 - upperExtend * 1.5;
-      const hx = Math.cos(ang) * 30, hy = Math.sin(ang) * 30;
-      ctx.beginPath(); ctx.arc(hx, -55 + crouchOffset + hy, 6 + upperExtend * 2, 0, Math.PI * 2);
+      const hx = Math.cos(ang)*30, hy = Math.sin(ang)*30;
+      ctx.beginPath(); ctx.arc(hx, -55 + crouchOffset + hy, 6 + upperExtend*2, 0, Math.PI*2);
       ctx.fillStyle = upperExtend > 0.5 ? '#fbbf24' : accentColor; ctx.fill();
     } else if (punchExtend > 0) {
       const ext = punchExtend * 30;
-      ctx.beginPath(); ctx.arc(15 + ext, -45 + crouchOffset, 5 + punchExtend * 2, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(15 + ext, -45 + crouchOffset, 5 + punchExtend*2, 0, Math.PI*2);
       ctx.fillStyle = accentColor; ctx.fill();
     }
 
@@ -530,7 +525,7 @@ class Fighter {
     if (this.estado === 'crouch') {
       ctx.quadraticCurveTo(-10, -15 + crouchOffset, -15, 0);
     } else {
-      ctx.quadraticCurveTo(-4 + legBack * 0.4, -15 + crouchOffset / 2, -6 + legBack, 0);
+      ctx.quadraticCurveTo(-4 + legBack*0.4, -15 + crouchOffset/2, -6 + legBack, 0);
     }
     ctx.stroke();
 
@@ -541,13 +536,13 @@ class Fighter {
       const isLow = moveType === 'sweep';
       const ext = kickExtend * (isLow ? 35 : 40);
       const ey = isLow ? -8 : -25;
-      ctx.quadraticCurveTo(15 + ext * 0.4, isLow ? -20 : -30, 18 + ext, ey);
+      ctx.quadraticCurveTo(15 + ext*0.4, isLow ? -20 : -30, 18 + ext, ey);
     } else if (this.estado === 'crouch') {
       ctx.quadraticCurveTo(10, -15 + crouchOffset, 15, 0);
     } else if (this.estado === 'jump') {
       ctx.quadraticCurveTo(15, -15, 22, -5);
     } else {
-      ctx.quadraticCurveTo(4 + legFront * 0.4, -15, 6 + legFront, 0);
+      ctx.quadraticCurveTo(4 + legFront*0.4, -15, 6 + legFront, 0);
     }
     ctx.stroke();
 
@@ -555,16 +550,16 @@ class Fighter {
       const isLow = moveType === 'sweep';
       const ext = kickExtend * (isLow ? 35 : 40);
       const ey = isLow ? -8 : -25;
-      ctx.beginPath(); ctx.arc(18 + ext, ey, 5 + kickExtend * 2, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(18 + ext, ey, 5 + kickExtend*2, 0, Math.PI*2);
       ctx.fillStyle = accentColor; ctx.fill();
     }
 
     if (specialGlow > 0) {
-      const g = 0.5 + Math.sin(t * 0.4) * 0.5;
+      const g = 0.5 + Math.sin(t*0.4)*0.5;
       ctx.globalAlpha = 0.6;
       ctx.strokeStyle = this.color; ctx.lineWidth = 2;
       ctx.shadowColor = this.color; ctx.shadowBlur = 25;
-      ctx.beginPath(); ctx.arc(0, -45 + crouchOffset, 45 + g * 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -45 + crouchOffset, 45 + g*8, 0, Math.PI*2); ctx.stroke();
       ctx.globalAlpha = 1;
     }
 
@@ -575,22 +570,22 @@ class Fighter {
       ctx.globalAlpha = 0.65;
       ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 3;
       ctx.shadowColor = '#93c5fd'; ctx.shadowBlur = 20;
-      ctx.beginPath(); ctx.arc(this.x, this.y - 45, 48, -Math.PI / 2.3, Math.PI / 2.3); ctx.stroke();
+      ctx.beginPath(); ctx.arc(this.x, this.y-45, 48, -Math.PI/2.3, Math.PI/2.3); ctx.stroke();
       ctx.restore();
     }
     if (this.meter >= 100 && this.estado !== 'attacking') {
       ctx.save();
-      ctx.globalAlpha = 0.4 + Math.sin(t * 0.2) * 0.2;
+      ctx.globalAlpha = 0.4 + Math.sin(t*0.2)*0.2;
       ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
       ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 15;
-      ctx.beginPath(); ctx.arc(this.x, this.y - 40, 55, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(this.x, this.y-40, 55, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
     if (this.slowTimer > 0) {
       ctx.save();
-      ctx.globalAlpha = 0.35 + Math.sin(t * 0.15) * 0.15;
+      ctx.globalAlpha = 0.35 + Math.sin(t*0.15)*0.15;
       ctx.strokeStyle = '#a5f3fc'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(this.x, this.y - 45, 38, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(this.x, this.y-45, 38, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
     if (this.combo >= 2) {
@@ -600,7 +595,7 @@ class Fighter {
       ctx.fillStyle = '#fbbf24';
       ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
       const txt = this.combo + ' HITS!';
-      const yPos = this.y - 130 + Math.sin(t * 0.3) * 3;
+      const yPos = this.y - 130 + Math.sin(t*0.3)*3;
       ctx.strokeText(txt, this.x, yPos);
       ctx.fillText(txt, this.x, yPos);
       ctx.restore();
