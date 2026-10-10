@@ -415,6 +415,7 @@ function update() {
       if (modoActual === 'roguelike' && run && run.activo) {
         const ganador = window.__roguelikeGanador;
         window.__roguelikeGanador = null;
+        estadoJuego = 'roguelike_pause';
         if (ganador === 'jugador') {
           roguelikeAlTerminarPiso('jugador');
         } else {
