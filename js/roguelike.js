@@ -25,25 +25,41 @@ function factorPiso(piso) {
 }
 
 function crearRivalDelPiso(piso, personajeJugadorId) {
-  // Elegir personaje aleatorio distinto al del jugador
-  const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
-  const base = disponibles[Math.floor(Math.random() * disponibles.length)];
-  // Clonar y escalar
-  const def = JSON.parse(JSON.stringify(base));
-  const factor = factorPiso(piso);
-  def.maxHealth = Math.round(def.maxHealth * factor);
-  def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.03); // +3% daño por piso
-  def.speed = def.speed * (1 + (piso - 1) * 0.01);     // +1% velocidad por piso
-  def.__piso = piso;
-  return def;
-}
+  const esFinal = esPisoBossFinal(piso);
+  const esBoss  = esPisoBoss(piso);
+  let def;
 
-function dificultadDelPiso(piso) {
-  // Los primeros pisos son fáciles, los últimos pesadilla
-  if (piso <= 5) return 'facil';
-  if (piso <= 12) return 'normal';
-  if (piso <= 22) return 'dificil';
-  return 'pesadilla';
+  if (esFinal) {
+    // Jefe final: usar el boss definido
+    def = JSON.parse(JSON.stringify(BOSSES[0]));
+    const factor = 1 + (piso / 30 - 1) * 0.15; // cada 30 pisos es un poco más fuerte
+    def.maxHealth = Math.round(def.maxHealth * Math.max(1, factor));
+    def.dmgMult   = def.dmgMult * (1 + (piso - 30) * 0.01);
+  } else if (esBoss) {
+    // Miniboss: clonar un personaje y buffearlo
+    const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
+    const base = disponibles[Math.floor(Math.random() * disponibles.length)];
+    def = JSON.parse(JSON.stringify(base));
+    const factor = 1 + (piso - 1) * 0.05;
+    def.maxHealth = Math.round(def.maxHealth * factor * 1.5);
+    def.dmgMult   = def.dmgMult * (1 + (piso - 1) * 0.03) * 1.25;
+    def.speed     = def.speed * (1 + (piso - 1) * 0.01) * 1.05;
+    def.name      = 'CAMPEÓN ' + def.name;
+  } else {
+    // Piso normal
+    const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
+    const base = disponibles[Math.floor(Math.random() * disponibles.length)];
+    def = JSON.parse(JSON.stringify(base));
+    const factor = factorPiso(piso);
+    def.maxHealth = Math.round(def.maxHealth * factor);
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.03);
+    def.speed = def.speed * (1 + (piso - 1) * 0.01);
+  }
+
+  def.__piso = piso;
+  def.__esBoss = esBoss;
+  def.__esBossFinal = esFinal;
+  return def;
 }
 
 // ============================================================
@@ -142,39 +158,35 @@ function roguelikeEmpezarPiso() {
   const jugadorDef = construirJugadorConBonuses();
   const rivalDef = crearRivalDelPiso(run.piso, run.personajeId);
 
-  // Guardar def del jugador para reusar en todos los pisos
+  // Aplicar cura por piso si la tiene
+  if (run.bonuses.curaEntrePisos > 0 && run.piso > 1 && run.__vidaAlEntrar !== undefined) {
+    run.__vidaAlEntrar = Math.min(jugadorDef.maxHealth, run.__vidaAlEntrar + run.bonuses.curaEntrePisos);
+  }
+
   personajeJugador = jugadorDef;
   personajeIA = rivalDef;
 
-  // Ajustar dificultad global al piso
   dificultad = dificultadDelPiso(run.piso);
 
-  // Crear fighters
   jugador = new Fighter(jugadorDef, 200, 1, false);
   ia = new Fighter(rivalDef, W - 200, -1, true);
 
-  // Vida inicial del jugador: si no es piso 1, conservar salud previa
   if (run.piso > 1 && run.__vidaAlEntrar !== undefined) {
     jugador.salud = run.__vidaAlEntrar;
     jugador.saludGhost = run.__vidaAlEntrar;
   }
-  // Medidor inicial por mejoras
   if (run.bonuses.medidorInicial > 0) {
     jugador.meter = Math.min(100, run.bonuses.medidorInicial * 100);
   }
 
-  // Resetear banderas
   victoriasJugador = 0;
   victoriasIA = 0;
   comboTopeEstaPartida = 0;
   escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
-  estadoJuego = 'countdown';
-  countdownTimer = 180;
   mensajeGrande = '';
   mensajeTimer = 0;
   pausado = false;
 
-  // Limpiar efectos
   particles.length = 0;
   dmgNumbers.length = 0;
   impactRings.length = 0;
@@ -182,25 +194,68 @@ function roguelikeEmpezarPiso() {
   lightningBolts.length = 0;
 
   clearPresses();
+
+  // ¿Es piso de boss? Mostrar aviso
+  if (rivalDef.__esBoss) {
+    run.esBossPiso = true;
+    run.esBossPisoFinal = rivalDef.__esBossFinal;
+    run.eleccionesRestantes = 0; // se rellenará al ganar
+    // Resetear fase del boss
+    ia.faseActual = 1;
+    estadoJuego = 'boss_warning';
+    window.__bossWarningTimer = 150; // ~2.5 segundos
+    mostrarAvisoBoss(rivalDef);
+  } else {
+    run.esBossPiso = false;
+    run.esBossPisoFinal = false;
+    run.eleccionesRestantes = 0;
+    estadoJuego = 'countdown';
+    countdownTimer = 180;
+  }
 }
 
+// ============================================================
+//  AVISO DE BOSS
+// ============================================================
+function mostrarAvisoBoss(rivalDef) {
+  const overlay = document.getElementById('bossWarningOverlay');
+  const title = document.getElementById('bossWarningTitle');
+  const sub = document.getElementById('bossWarningSub');
+  const icon = document.getElementById('bossWarningIcon');
+
+  if (rivalDef.__esBossFinal) {
+    overlay.classList.add('final');
+    title.textContent = rivalDef.name;
+    sub.textContent = '⚡ JEFE FINAL · 3 FASES ⚡';
+    icon.textContent = '🔥';
+  } else {
+    overlay.classList.remove('final');
+    title.textContent = rivalDef.name;
+    sub.textContent = '⚠ MINIBOSS · RECOMPENSA DOBLE ⚠';
+    icon.textContent = '⚠';
+  }
+  overlay.classList.add('active');
+}
+
+function ocultarAvisoBoss() {
+  const overlay = document.getElementById('bossWarningOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+  
+
 function roguelikeAlTerminarPiso(ganador) {
-  // ganador: 'jugador' o 'ia'
   if (ganador === 'ia') {
-    // Derrota → game over
     run.activo = false;
     registrarPisoRoguelike(run.piso);
     mostrarGameOverRoguelike();
     return;
   }
 
-  // Ganó el piso
   run.rivalesVencidos.push(run.piso);
 
-  // Guardar vida actual para siguiente piso
+  // Guardar vida para siguiente piso
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
-  // Recuperar 20% de la vida máxima
   const recuperacion = Math.round(vidaMax * 0.20);
   const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
   run.__vidaAlEntrar = vidaSiguiente;
@@ -214,20 +269,46 @@ function roguelikeAlTerminarPiso(ganador) {
     return;
   }
 
-  // Mostrar pantalla de mejoras
+  // Determinar recompensa
+  if (run.esBossPiso) {
+    // Recompensa doble
+    run.eleccionesRestantes = 2;
+  } else {
+    run.eleccionesRestantes = 1;
+  }
+
+  // Mostrar primera tanda de mejoras
+  mostrarSiguienteTandaMejoras();
+}
+
+// ============================================================
+//  TANDAS DE MEJORAS (para recompensa doble tras boss)
+// ============================================================
+function mostrarSiguienteTandaMejoras() {
   const opciones = elegirMejorasAleatorias(3);
   mostrarPantallaMejoras(opciones);
 }
 
 function roguelikeElegirMejora(mejora) {
   aplicarMejora(mejora);
+
+  // ¿Quedan elecciones pendientes? (boss = 2)
+  if (run.eleccionesRestantes > 1) {
+    run.eleccionesRestantes--;
+    ocultarPantallaMejoras();
+    // Pequeña pausa y mostrar nueva tanda
+    setTimeout(function() {
+      if (run && run.activo) mostrarSiguienteTandaMejoras();
+    }, 200);
+    return;
+  }
+
+  // Ya no quedan elecciones: avanzar piso
+  run.eleccionesRestantes = 0;
   run.piso++;
   ocultarPantallaMejoras();
-  // Pequeña pausa antes de arrancar el siguiente piso
   setTimeout(function() {
-    if (run && run.activo) {
-      roguelikeEmpezarPiso();
-    }
+    if (run && run.activo) roguelikeEmpezarPiso();
   }, 300);
 }
 
@@ -235,8 +316,7 @@ function roguelikeElegirMejora(mejora) {
 //  UI: PANTALLA DE MEJORAS
 // ============================================================
 function mostrarPantallaMejoras(opciones) {
-
-  // Si se activó una sinergia al terminar el piso anterior, avisar
+  // Aviso de sinergia
   let textoAviso = '';
   if (run.sinergiaPendienteAviso) {
     textoAviso = ' ✦ ¡SINERGIA ACTIVADA: ' + run.sinergiaPendienteAviso.nombre + '!';
@@ -247,7 +327,17 @@ function mostrarPantallaMejoras(opciones) {
   const grid = document.getElementById('upgradeGrid');
   const sub = document.getElementById('upgradeSub');
 
-  sub.textContent = 'Piso ' + run.piso + ' superado · Elige una mejora para el piso ' + (run.piso + 1) + textoAviso;
+  // Texto de cabecera según contexto
+  let textoCabecera;
+  if (run.eleccionesRestantes > 1) {
+    textoCabecera = '🏆 ¡BOSS VENCIDO! · Elige ' + run.eleccionesRestantes + ' mejoras';
+  } else if (run.esBossPiso && run.eleccionesRestantes === 1) {
+    textoCabecera = '🏆 ¡BOSS VENCIDO! · Última elección';
+  } else {
+    textoCabecera = 'Piso ' + run.piso + ' superado · Elige una mejora para el piso ' + (run.piso + 1);
+  }
+  sub.textContent = textoCabecera + textoAviso;
+
   grid.innerHTML = '';
 
   opciones.forEach(function(m) {
@@ -266,8 +356,8 @@ function mostrarPantallaMejoras(opciones) {
   });
 
   overlay.classList.add('active');
-  
-  // Añadir botón "ver build" al overlay de mejoras
+
+  // Botón ver build
   let btnBuild = document.getElementById('btnVerBuild');
   if (!btnBuild) {
     btnBuild = document.createElement('button');
@@ -278,7 +368,6 @@ function mostrarPantallaMejoras(opciones) {
     btnBuild.addEventListener('click', function(){ toggleBuildOverlay(); });
     document.getElementById('upgradeOverlay').appendChild(btnBuild);
   }
-  
 }
 
 function ocultarPantallaMejoras() {
