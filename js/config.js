@@ -274,6 +274,32 @@ const MEJORAS = [
 const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
 
 // ============================================================
+//  BOSSES (no aparecen en el menú, solo en roguelike)
+// ============================================================
+const BOSSES = [
+  { id:'void_lord', name:'SEÑOR DEL VACÍO', desc:'El devorador de mundos',
+    color:'#7c3aed', accent:'#a855f7',
+    maxHealth: 180, speed: 5.2, dmgMult: 1.3, jumpPower: -14,
+    stats:{hp:100, spd:88, pow:100, def:90},
+    abilityName:'', abilityDesc:'',
+    specialName:'APOCALIPSIS',
+    special:{damage:42, range:130, launch:true, teleport:true},
+    personality:'rushdown',
+    bossOnly: true }
+];
+
+// ============================================================
+//  HELPERS DE PISO (boss / miniboss)
+// ============================================================
+// Cada 15 pisos → boss. Cada 30 → boss final con 3 fases.
+function esPisoBoss(piso)     { return piso > 0 && piso % 15 === 0; }
+function esPisoBossFinal(piso){ return piso > 0 && piso % 30 === 0; }
+function nombrePisoBoss(piso){
+  if (esPisoBossFinal(piso)) return BOSSES[0].name;
+  return 'CAMPEÓN DEL PISO ' + piso;
+}
+
+// ============================================================
 //  SINERGIAS (se activan al tener 2+ mejoras)
 // ============================================================
 const SINERGIAS = [
