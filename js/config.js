@@ -396,6 +396,9 @@ document.addEventListener('keydown', function(e) {
   if (typeof estadoJuego !== 'undefined' && estadoJuego === 'boss_warning' && typeof saltarAvisoBoss === 'function') {
     if (k !== 'm') saltarAvisoBoss();
   }
+   if (typeof estadoJuego !== 'undefined' && estadoJuego === 'vs_screen' && typeof saltarVSScreen === 'function') {
+    if (k !== 'm') saltarVSScreen();
+  }
   if (['arrowleft','arrowright','arrowup','arrowdown',' '].indexOf(k) !== -1) e.preventDefault();
 });
 document.addEventListener('keyup', function(e) {
