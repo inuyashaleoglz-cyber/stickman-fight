@@ -30,6 +30,10 @@ class Fighter {
     // NUEVOS: bonuses con lógica
     this.bonuses = def.__bonuses || bonusesVacios();
     this.regenAccum = 0;
+      // Squash & stretch
+    this.escalaX = 1;
+    this.escalaY = 1;
+    this.anticipacionOffset = 0;
     this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
@@ -63,6 +67,9 @@ class Fighter {
     this.dashTimer = 0; this.dashDir = 0;
     this.regenAccum = 0;
     this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
+    this.escalaX = 1;
+    this.escalaY = 1;
+    this.anticipacionOffset = 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
@@ -301,23 +308,31 @@ class Fighter {
     this.vy += GRAVITY;
     this.y += this.vy;
     if (this.y >= GROUND) {
-      if (!this.enSuelo) spawnParticles(this.x, GROUND, 4, '#888', 3, 0.4);
+      if (!this.enSuelo) {
+        spawnParticles(this.x, GROUND, 4, '#888', 3, 0.4);
+        this.escalaY = 0.75;
+        this.escalaX = 1.28;
+      }
       this.y = GROUND; this.vy = 0; this.enSuelo = true;
     }
 
-    if (saltar) {
+      if (saltar) {
       const saltosPermitidos = 1 + ((this.bonuses && this.bonuses.saltosExtra) || 0);
       const esBlazeExtra = (this.def.id === 'blaze' && this.doubleJumpUsed === false);
       if (this.enSuelo && !this.crouching) {
         this.vy = this.def.jumpPower;
         this.enSuelo = false;
         this.saltosUsados = 1;
+        this.escalaY = 1.18;
+        this.escalaX = 0.85;
         SFX.jump();
         spawnParticles(this.x, GROUND, 5, 'rgba(200,200,200,0.6)', 4, 0.5);
       } else if (this.saltosUsados < saltosPermitidos || esBlazeExtra) {
         this.vy = this.def.jumpPower * 0.92;
         this.saltosUsados++;
         if (this.def.id === 'blaze') this.doubleJumpUsed = true;
+        this.escalaY = 1.15;
+        this.escalaX = 0.88;
         SFX.jump();
         spawnParticles(this.x, this.y, 12, this.color, 6, 0.1);
         spawnRing(this.x, this.y - 20, this.color, 50);
@@ -393,9 +408,25 @@ class Fighter {
       if (this.estadoTimer <= 0) this.estado = 'idle';
     }
 
-    if (this.saludGhost > this.salud)
+      if (this.saludGhost > this.salud)
       this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
     else this.saludGhost = this.salud;
+
+    // Recuperación suave de escala (squash & stretch)
+    this.escalaX += (1 - this.escalaX) * 0.18;
+    this.escalaY += (1 - this.escalaY) * 0.18;
+
+    // Anticipación: echarse hacia atrás antes de ataques fuertes
+    if (this.estado === 'attacking' && this.moveActual && this.moveActual.frame > 0) {
+      const st = this.moveActual.data.startup;
+      if (st >= 6 && this.moveActual.frame <= st * 0.55) {
+        this.anticipacionOffset = -5;
+      } else {
+        this.anticipacionOffset *= 0.65;
+      }
+    } else {
+      this.anticipacionOffset *= 0.65;
+    }
   }
   
   intentarGolpe(oponente, mv, nombre) {
@@ -738,7 +769,7 @@ class Fighter {
         ctx.save();
         ctx.globalAlpha = this.clonTimer / 40 * 0.6;
         ctx.translate(this.x + offsetX, this.y);
-        ctx.scale(this.facing, 1);
+        ctx.scale(this.facing * this.escalaX, this.escalaY);
         ctx.shadowColor = this.accent;
         ctx.shadowBlur = 20;
         ctx.fillStyle = this.color;
@@ -753,8 +784,7 @@ class Fighter {
     }
 
     ctx.save();
-    ctx.translate(this.x, this.y);
-
+    ctx.translate(this.x + this.anticipacionOffset * this.facing, this.y);
     ctx.save();
     ctx.globalAlpha = 0.4;
     ctx.fillStyle = '#000';
@@ -939,6 +969,41 @@ class Fighter {
         ctx.fillRect(this.x + dx, this.y - 30 + dy, 2, 3);
       }
       ctx.restore();
+    }
+        // Motion lines en ataques activos
+    if (this.estado === 'attacking' && this.moveFase === 'active' && this.moveActual) {
+      const nombre = this.moveActual.name;
+      const esPuño = nombre === 'punch' || nombre === 'lowPunch';
+      const esPatada = nombre === 'kick' || nombre === 'sweep';
+      const esUpper = nombre === 'uppercut';
+      if (esPuño || esPatada || esUpper) {
+        ctx.save();
+        ctx.strokeStyle = this.accent;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.75;
+        ctx.shadowColor = this.accent;
+        ctx.shadowBlur = 10;
+        const dir = this.facing;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          if (esPuño) {
+            const yy = this.y - 45 + i * 7 - 7;
+            ctx.moveTo(this.x + dir * (30 + i * 6), yy);
+            ctx.lineTo(this.x + dir * (55 + i * 6), yy);
+          } else if (esPatada) {
+            const yy = this.y - 30 + i * 8 - 8;
+            ctx.moveTo(this.x + dir * (30 + i * 6), yy);
+            ctx.lineTo(this.x + dir * (58 + i * 6), yy);
+          } else if (esUpper) {
+            const xx = this.x + dir * (15 + i * 5);
+            ctx.moveTo(xx, this.y - 100 - i * 6);
+            ctx.lineTo(xx, this.y - 75 - i * 6);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     }
     if (this.combo >= 2) {
       ctx.save();
