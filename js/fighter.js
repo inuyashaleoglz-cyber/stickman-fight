@@ -27,9 +27,17 @@ class Fighter {
     this.dashDir = 0;
     this.lastATap = 0;
     this.lastDTap = 0;
-    // BONUSES (roguelike)
+    // NUEVOS: bonuses con lógica
     this.bonuses = def.__bonuses || bonusesVacios();
     this.regenAccum = 0;
+    this.sangradoTimer = 0;
+    this.sangradoAplica = 0;
+    this.sangradoAcum = 0;
+    this.revivirUsado = false;
+    this.clonTimer = 0;
+    this.clonX = 0;
+    this.faseActual = 1;
+    this.saltosUsados = 0;
     // IA
     this.aiDecisionTimer = 0;
     this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
@@ -52,8 +60,14 @@ class Fighter {
     this.healAccum = 0; this.hitCount = 0; this.doubleJumpUsed = false;
     this.dashTimer = 0; this.dashDir = 0;
     this.regenAccum = 0;
+    this.sangradoTimer = 0;
+    this.sangradoAplica = 0;
+    this.sangradoAcum = 0;
+    this.revivirUsado = false;
+    this.clonTimer = 0;
+    this.faseActual = 1;
+    this.saltosUsados = 0;
     this.aiDecisionTimer = 0;
-    // Aplicar medidor inicial si hay bonus
     if (this.bonuses && this.bonuses.medidorInicial > 0) {
       this.meter = Math.min(100, this.bonuses.medidorInicial * 100);
     }
@@ -125,6 +139,16 @@ class Fighter {
     if (id === 'bolt' && sp.lightning && oponente) {
       spawnLightning(oponente.x, oponente.y - 50, this.color);
     }
+    // NUEVO: clon del especial (mejora Épica de Shadow)
+    if (this.bonuses && this.bonuses.clonEspecial && oponente) {
+      this.clonTimer = 40;
+      this.clonX = this.x - this.facing * 60;
+      spawnParticles(this.clonX, this.y - 50, 20, this.color, 10);
+    }
+    // NUEVO: congelar al especial (mejora Épica de Frost)
+    if (this.bonuses && this.bonuses.congelarEspecial && oponente) {
+      oponente.slowTimer = Math.max(oponente.slowTimer, 120);
+    }
     return true;
   }
 
@@ -139,7 +163,7 @@ class Fighter {
         this.healAccum -= 1;
       }
     }
-    // Regeneración por mejoras (roguelike)
+    // Regeneración por mejoras
     if (this.bonuses && this.bonuses.regeneracion > 0 && this.salud > 0 && this.salud < this.maxHealth) {
       this.regenAccum += this.bonuses.regeneracion / 60;
       if (this.regenAccum >= 1) {
@@ -147,10 +171,36 @@ class Fighter {
         this.regenAccum -= Math.floor(this.regenAccum);
       }
     }
+
+    // NUEVO: sangrado (DoT aplicado por el atacante)
+    if (this.sangradoTimer > 0) {
+      this.sangradoTimer--;
+      this.sangradoAcum += this.sangradoAplica / 60;
+      if (this.sangradoAcum >= 1) {
+        const tick = Math.floor(this.sangradoAcum);
+        this.salud -= tick;
+        if (this.salud < 0) this.salud = 0;
+        this.sangradoAcum -= tick;
+        spawnDamageNumber(this.x + (Math.random() - 0.5) * 20, this.y - 80, '-' + tick, '#ef4444');
+        spawnParticles(this.x, this.y - 40, 2, '#dc2626', 2, 0.3);
+      }
+    }
+
+    // NUEVO: clon (mejora épica de Shadow)
+    if (this.clonTimer > 0) {
+      this.clonTimer--;
+      // El clon golpea al rival a mitad de su vida
+      if (this.clonTimer === 20 && oponente) {
+        oponente.recibirDaño(12, this, 'clon');
+        spawnParticles(oponente.x, oponente.y - 50, 15, this.color, 8);
+        spawnRing(oponente.x, oponente.y - 50, this.accent, 80);
+      }
+    }
+
     if (this.slowTimer > 0) this.slowTimer--;
     if (this.superArmorFrames > 0) this.superArmorFrames--;
     if (this.dashTimer > 0) this.dashTimer--;
-    if (this.enSuelo) this.doubleJumpUsed = false;
+    if (this.enSuelo) this.saltosUsados = 0;
 
     let mover = 0, saltar = false, agacharse = false, bloquear = false, atacar = null;
 
@@ -167,7 +217,10 @@ class Fighter {
           if (now - this.lastATap < 260) {
             this.dashDir = -1;
             this.dashTimer = 12;
-            if (this.bonuses && this.bonuses.dashInvuln) this.invulnerable = Math.max(this.invulnerable, 10);
+            if (this.bonuses && this.bonuses.dashInvuln) {
+              const extra = (this.bonuses.dashInvulnExtra || 0);
+              this.invulnerable = Math.max(this.invulnerable, 10 + extra);
+            }
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
           }
@@ -178,7 +231,10 @@ class Fighter {
           if (now - this.lastDTap < 260) {
             this.dashDir = 1;
             this.dashTimer = 12;
-            if (this.bonuses && this.bonuses.dashInvuln) this.invulnerable = Math.max(this.invulnerable, 10);
+            if (this.bonuses && this.bonuses.dashInvuln) {
+              const extra = (this.bonuses.dashInvulnExtra || 0);
+              this.invulnerable = Math.max(this.invulnerable, 10 + extra);
+            }
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
           }
@@ -206,6 +262,10 @@ class Fighter {
     let spd = this.def.speed;
     if (this.slowTimer > 0) spd *= 0.55;
     if (this.def.id === 'shadow' && mover !== 0 && mover * this.facing < 0) spd *= 1.3;
+    // NUEVO: velocidad en combos (Blaze épica)
+    if (this.bonuses && this.bonuses.velocidadComboPct > 0 && this.combo >= 3) {
+      spd *= (1 + this.bonuses.velocidadComboPct);
+    }
 
     if (this.dashTimer > 0) {
       const mult = 1 + ((this.bonuses && this.bonuses.dashPct) || 0);
@@ -213,6 +273,17 @@ class Fighter {
       if (this.dashTimer % 2 === 0) {
         spawnParticles(this.x, this.y - 40, 2, this.color, 2, 0.05);
       }
+      // NUEVO: daño del dash
+      if (this.bonuses && this.bonuses.dashDaño > 0 && oponente && !this.yaGolpeoDash) {
+        const dist = Math.abs(this.x - oponente.x);
+        if (dist < 40 && oponente.invulnerable === 0) {
+          oponente.recibirDaño(this.bonuses.dashDaño, this, 'dash');
+          this.yaGolpeoDash = true;
+          spawnParticles(oponente.x, oponente.y - 45, 12, this.color, 6);
+          spawnRing(oponente.x, oponente.y - 45, this.accent, 60);
+        }
+      }
+      if (this.dashTimer === 0) this.yaGolpeoDash = false;
     } else {
       let targetVx = mover * spd;
       if (this.crouching) targetVx = 0;
@@ -228,14 +299,18 @@ class Fighter {
     }
 
     if (saltar) {
+      const saltosPermitidos = 1 + ((this.bonuses && this.bonuses.saltosExtra) || 0);
+      const esBlazeExtra = (this.def.id === 'blaze' && this.doubleJumpUsed === false);
       if (this.enSuelo && !this.crouching) {
         this.vy = this.def.jumpPower;
         this.enSuelo = false;
+        this.saltosUsados = 1;
         SFX.jump();
         spawnParticles(this.x, GROUND, 5, 'rgba(200,200,200,0.6)', 4, 0.5);
-      } else if (this.def.id === 'blaze' && !this.doubleJumpUsed && !this.enSuelo) {
+      } else if (this.saltosUsados < saltosPermitidos || esBlazeExtra) {
         this.vy = this.def.jumpPower * 0.92;
-        this.doubleJumpUsed = true;
+        this.saltosUsados++;
+        if (this.def.id === 'blaze') this.doubleJumpUsed = true;
         SFX.jump();
         spawnParticles(this.x, this.y, 12, this.color, 6, 0.1);
         spawnRing(this.x, this.y - 20, this.color, 50);
@@ -315,7 +390,8 @@ class Fighter {
       this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
     else this.saludGhost = this.salud;
   }
-    intentarGolpe(oponente, mv, nombre) {
+  
+  intentarGolpe(oponente, mv, nombre) {
     const dist = Math.abs(this.x - oponente.x);
     const enFrente = (oponente.x - this.x) * this.facing > 0;
     const yDiff = Math.abs(this.y - oponente.y);
@@ -327,15 +403,22 @@ class Fighter {
     this.yaGolpeo = true;
     let daño = mv.damage * this.def.dmgMult;
 
-    // Bonus de tipo de ataque (roguelike)
+    // Bonuses de tipo de ataque
     if (this.bonuses) {
       if (nombre === 'punch' || nombre === 'lowPunch') daño *= (1 + this.bonuses.punchPct);
       if (nombre === 'kick' || nombre === 'sweep') daño *= (1 + this.bonuses.kickPct);
       if (nombre === 'uppercut') daño *= (1 + this.bonuses.uppercutPct);
-      // Combo master
       if (this.bonuses.comboMasterPct > 0) {
         const bonus = Math.min(0.5, this.combo * this.bonuses.comboMasterPct);
         daño *= (1 + bonus);
+      }
+      // NUEVO: furia baja vida (Phoenix épica)
+      if (this.bonuses.furiaBajaVida > 0 && (this.salud / this.maxHealth) < 0.30) {
+        daño *= (1 + this.bonuses.furiaBajaVida);
+      }
+      // NUEVO: daño a ralentizados (Frost)
+      if (this.bonuses.dañoASlow > 0 && oponente.slowTimer > 0) {
+        daño *= (1 + this.bonuses.dañoASlow);
       }
     }
 
@@ -343,7 +426,7 @@ class Fighter {
     if (this.esIA) daño *= AIS[dificultad].dmgMult;
     daño = Math.round(daño);
 
-    // Crítico (roguelike)
+    // Crítico
     let esCritico = false;
     if (this.bonuses && this.bonuses.critChance > 0) {
       if (Math.random() < this.bonuses.critChance) {
@@ -351,7 +434,12 @@ class Fighter {
         esCritico = true;
       }
     }
+    // NUEVO: crítico garantizado en combos altos
+    if (this.bonuses && this.bonuses.critGarantizadoCombo && this.combo >= 4) {
+      if (!esCritico) { daño *= 2; esCritico = true; }
+    }
 
+    // Bloqueo
     if (oponente.blocking && ((this.x - oponente.x) * oponente.facing > 0)) {
       let reduccionBloqueo = 0.18;
       if (oponente.bonuses && oponente.bonuses.bloqueoExtraPct > 0) {
@@ -360,6 +448,16 @@ class Fighter {
       const reducido = Math.max(1, Math.round(daño * (1 - reduccionBloqueo) * 0.3));
       oponente.salud -= reducido;
       oponente.invulnerable = 8;
+      // NUEVO: reflejo (mejora épica + Rocky)
+      if (oponente.bonuses && oponente.bonuses.reflejoPct > 0) {
+        const reflejado = Math.round(reducido * oponente.bonuses.reflejoPct);
+        if (reflejado > 0) {
+          this.salud -= reflejado;
+          if (this.salud < 0) this.salud = 0;
+          spawnDamageNumber(this.x, this.y - 100, '-' + reflejado, '#38bdf8');
+          spawnParticles(this.x, this.y - 50, 8, '#38bdf8', 5);
+        }
+      }
       this.meter = Math.min(100, this.meter + mv.meterGain * 0.5 * (1 + (this.bonuses ? this.bonuses.medidorPct : 0)));
       oponente.meter = Math.min(100, oponente.meter + 4);
       const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
@@ -370,11 +468,10 @@ class Fighter {
       return;
     }
 
-    // Reducciones por personaje
+    // Reducciones
     let dmgFinal = daño;
     if (oponente.def.id === 'rocky') dmgFinal = Math.round(dmgFinal * 0.85);
     if (oponente.def.id === 'titan') dmgFinal = Math.round(dmgFinal * 0.75);
-    // Defensa por mejoras (roguelike)
     if (oponente.bonuses && oponente.bonuses.defensaPct > 0) {
       dmgFinal = Math.round(dmgFinal * (1 - oponente.bonuses.defensaPct));
     }
@@ -382,15 +479,20 @@ class Fighter {
     oponente.salud -= dmgFinal;
     if (oponente.salud < 0) oponente.salud = 0;
 
-    // Vampirismo (roguelike)
+    // Vampirismo
     if (this.bonuses && this.bonuses.vampirismo > 0 && this.salud > 0) {
       const curacion = Math.max(1, Math.round(dmgFinal * this.bonuses.vampirismo));
       this.salud = Math.min(this.maxHealth, this.salud + curacion);
       spawnDamageNumber(this.x, this.y - 110, '+' + curacion, '#4ade80', false);
     }
 
+    // Super armor (frames)
     const hasArmor = oponente.superArmorFrames > 0;
-    if (!hasArmor) {
+    // NUEVO: super armor leve (Titan rara) - solo interrumpen ataques fuertes
+    const esAtaqueFuerte = dmgFinal >= 8 || mv.special || mv.launch;
+    const hasSuperArmorLeve = oponente.bonuses && oponente.bonuses.superArmorLeve && !esAtaqueFuerte;
+
+    if (!hasArmor && !hasSuperArmorLeve) {
       oponente.invulnerable = 16;
       oponente.hitFlash = 10;
       oponente.estado = 'hit';
@@ -414,15 +516,28 @@ class Fighter {
     oponente.meter = Math.min(100, oponente.meter + mv.meterGain * 0.6);
     this.combo++; this.comboTimer = 90;
 
+    // Frost ralentiza
     if (this.def.id === 'frost' && !mv.special) {
-      oponente.slowTimer = 120;
+      let durSlow = 120;
+      if (this.bonuses && this.bonuses.slowPct > 0) durSlow *= (1 + this.bonuses.slowPct);
+      oponente.slowTimer = Math.max(oponente.slowTimer, durSlow);
       spawnParticles(oponente.x, oponente.y - 30, 8, '#a5f3fc', 5);
     }
-    if (mv.special && this.def.id === 'frost') oponente.slowTimer = 200;
+    if (mv.special && this.def.id === 'frost') {
+      oponente.slowTimer = Math.max(oponente.slowTimer, 200);
+    }
 
+    // NUEVO: sangrado (aplica DoT al rival)
+    if (this.bonuses && this.bonuses.sangradoPct > 0) {
+      oponente.sangradoTimer = 180; // 3 segundos
+      oponente.sangradoAplica = Math.max(oponente.sangradoAplica, this.bonuses.sangradoPct);
+    }
+
+    // Bolt rayo extra (con frecuencia variable)
     if (this.def.id === 'bolt') {
+      const freq = (this.bonuses && this.bonuses.rayoFrecuencia) ? this.bonuses.rayoFrecuencia : 4;
       this.hitCount++;
-      if (this.hitCount >= 4) {
+      if (this.hitCount >= freq) {
         this.hitCount = 0;
         oponente.salud -= 5;
         if (oponente.salud < 0) oponente.salud = 0;
@@ -450,6 +565,16 @@ class Fighter {
       const reducido = Math.max(1, Math.round(daño * (1 - reduccion) * 0.3));
       this.salud -= reducido;
       this.invulnerable = 12;
+      // Reflejo
+      if (this.bonuses && this.bonuses.reflejoPct > 0 && atacante) {
+        const reflejado = Math.round(reducido * this.bonuses.reflejoPct);
+        if (reflejado > 0) {
+          atacante.salud -= reflejado;
+          if (atacante.salud < 0) atacante.salud = 0;
+          spawnDamageNumber(atacante.x, atacante.y - 100, '-' + reflejado, '#38bdf8');
+          spawnParticles(atacante.x, atacante.y - 50, 8, '#38bdf8', 5);
+        }
+      }
       spawnParticles(this.x + this.facing * 20, this.y - 50, 8, '#93c5fd', 4);
       SFX.block();
       spawnDamageNumber(this.x, this.y - 90, 'Bloqueado', '#93c5fd');
@@ -462,13 +587,20 @@ class Fighter {
       dañoFinal = Math.round(dañoFinal * (1 - this.bonuses.defensaPct));
     }
 
+    // NUEVO: super armor leve (los ataques débiles no interrumpen)
+    const esAtaqueFuerte = dañoFinal >= 8;
+    const tieneSuperArmorLeve = this.bonuses && this.bonuses.superArmorLeve && !esAtaqueFuerte;
+
     this.salud -= dañoFinal;
     if (this.salud < 0) this.salud = 0;
-    this.invulnerable = 18;
-    this.estado = 'hit';
-    this.estadoTimer = 14;
     this.hitFlash = 10;
-    this.combo = 0;
+
+    if (!tieneSuperArmorLeve) {
+      this.invulnerable = 18;
+      this.estado = 'hit';
+      this.estadoTimer = 14;
+      this.combo = 0;
+    }
 
     const hx = this.x + (atacante ? Math.sign(this.x - atacante.x) * 15 : 0);
     const hy = this.y - 55;
@@ -516,7 +648,6 @@ class Fighter {
           return this.aiAction;
         }
       }
-
       if (meterFull && Math.random() < cfg.specialUse) {
         if (this.def.id === 'bolt' || this.def.id === 'frost' || dist < 120) {
           this.aiAction = {move:dir, jump:false, crouch:false, block:false, move_name:'special'};
@@ -584,6 +715,25 @@ class Fighter {
   }
 
   dibujar(t) {
+    // Clon (mejora épica de Shadow)
+    if (this.clonTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = this.clonTimer / 40 * 0.6;
+      ctx.translate(this.clonX, this.y);
+      ctx.scale(this.facing, 1);
+      ctx.shadowColor = this.accent;
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = this.color;
+      // Silueta simple
+      ctx.beginPath(); ctx.arc(0, -78, 11, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(-3, -68, 6, 38);
+      ctx.fillRect(-15, -60, 12, 5);
+      ctx.fillRect(3, -60, 12, 5);
+      ctx.fillRect(-12, -30, 8, 30);
+      ctx.fillRect(4, -30, 8, 30);
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.translate(this.x, this.y);
 
@@ -758,6 +908,18 @@ class Fighter {
       ctx.globalAlpha = 0.35 + Math.sin(t*0.15)*0.15;
       ctx.strokeStyle = '#a5f3fc'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(this.x, this.y-45, 38, 0, Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+    // Sangrado visual
+    if (this.sangradoTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.4 + Math.sin(t*0.3)*0.2;
+      ctx.fillStyle = '#dc2626';
+      for (let i = 0; i < 3; i++) {
+        const dx = Math.sin(t * 0.1 + i) * 15;
+        const dy = ((t * 2 + i * 30) % 40) - 20;
+        ctx.fillRect(this.x + dx, this.y - 30 + dy, 2, 3);
+      }
       ctx.restore();
     }
     if (this.combo >= 2) {
