@@ -21,7 +21,7 @@ const GROUND = H - 70;
 const GRAVITY = 0.75;
 const WALL_PAD = 50;
 const ROUNDS_TO_WIN = 2;
-const MAX_PISO = 30;
+const MAX_PISO = 999;
 
 // ============================================================
 //  PERSONAJES
@@ -274,6 +274,23 @@ const MEJORAS = [
 const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
 
 // ============================================================
+//  TIENDA
+// ============================================================
+const SHOP_ITEMS = [
+  { id:'mejora_random', name:'MEJORA ALEATORIA', icon:'🎁', precio:60,
+    desc:'Una mejora aleatoria (común, rara o épica).' },
+  { id:'mejora_epica',  name:'MEJORA ÉPICA',     icon:'💎', precio:150,
+    desc:'Una mejora épica garantizada.' },
+  { id:'cura_total',    name:'CURA COMPLETA',    icon:'💚', precio:50,
+    desc:'Recuperas toda tu vida máxima.' },
+  { id:'vida_max',      name:'+40 VIDA MÁXIMA',  icon:'❤️', precio:80,
+    desc:'Aumenta tu vida máxima permanentemente.' },
+  { id:'medidor_lleno', name:'MEDIDOR CARGADO',  icon:'⚡', precio:40,
+    desc:'Empiezas cada pelea con el especial listo.' }
+];
+
+
+// ============================================================
 //  BOSSES (no aparecen en el menú, solo en roguelike)
 // ============================================================
 const BOSSES = [
@@ -304,6 +321,7 @@ function tipoDePiso(piso) {
   if (piso <= 0) return 'normal';
   if (piso % 30 === 0) return 'boss_final';
   if (piso % 15 === 0) return 'boss';
+  if (piso % 7 === 0) return 'tienda';
   if (piso % 4 === 0) return 'elite';
   if (piso % 5 === 0) {
     const n = piso / 5;
