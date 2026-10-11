@@ -246,6 +246,9 @@ function roguelikeEmpezarPiso() {
   victoriasIA = 0;
   comboTopeEstaPartida = 0;
   escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
+    if (typeof playAmbient === 'function') {
+    playAmbient(SCENARIOS[escenarioActual].id);
+  }
   mensajeGrande = '';
   mensajeTimer = 0;
   pausado = false;
@@ -268,7 +271,7 @@ function roguelikeEmpezarPiso() {
 
   clearPresses();
 
-  if (rivalDef.__esBoss) {
+   if (rivalDef.__esBoss) {
     run.esBossPiso = true;
     run.esBossPisoFinal = rivalDef.__esBossFinal;
     run.esElitePiso = false;
@@ -277,6 +280,7 @@ function roguelikeEmpezarPiso() {
     estadoJuego = 'boss_warning';
     window.__bossWarningTimer = 150;
     mostrarAvisoBoss(rivalDef);
+    if (typeof playMusic === 'function') playMusic('boss');
   } else if (rivalDef.__esElite) {
     run.esBossPiso = false;
     run.esBossPisoFinal = false;
@@ -285,13 +289,14 @@ function roguelikeEmpezarPiso() {
     estadoJuego = 'boss_warning';
     window.__bossWarningTimer = 120;
     mostrarAvisoElite();
-  } else {
+    } else {
     run.esBossPiso = false;
     run.esBossPisoFinal = false;
     run.esElitePiso = false;
     run.eleccionesRestantes = 0;
     estadoJuego = 'countdown';
     countdownTimer = 180;
+    if (typeof playMusic === 'function') playMusic('combat');
   }
 }
 
@@ -495,6 +500,8 @@ function ocultarPantallaMejoras() {
 //  UI: GAME OVER
 // ============================================================
 function mostrarGameOverRoguelike() {
+  if (typeof stopMusic === 'function') stopMusic();
+  if (typeof stopAmbient === 'function') stopAmbient();
   SFX.defeat();
   const overlay = document.getElementById('gameOverOverlay');
   const sub = document.getElementById('goSub');
@@ -543,6 +550,8 @@ function mostrarGameOverRoguelike() {
 //  UI: VICTORIA
 // ============================================================
 function mostrarVictoriaRoguelike() {
+  if (typeof stopMusic === 'function') stopMusic();
+  if (typeof stopAmbient === 'function') stopAmbient();
   SFX.victory();
   const overlay = document.getElementById('victoryOverlay');
   const stats = document.getElementById('victoryStats');
