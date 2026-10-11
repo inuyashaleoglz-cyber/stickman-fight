@@ -1045,3 +1045,129 @@ canvas { display: block; width: 100%; height: 100%; background: var(--bg-deep); 
   border-color: var(--neon-yellow);
   box-shadow: 0 0 12px rgba(255,247,161,0.4);
 }
+
+/* ============================================================
+   VS SCREEN
+   ============================================================ */
+.vs-screen-overlay {
+  background:
+    linear-gradient(135deg, rgba(255,158,205,0.15) 0%, transparent 40%),
+    linear-gradient(225deg, rgba(157,230,255,0.15) 0%, transparent 40%),
+    rgba(10,6,24,0.95);
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 20px;
+  animation: vsFadeIn 0.2s ease-out;
+}
+@keyframes vsFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.vs-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: vsSlideIn 0.3s ease-out;
+}
+.vs-left { animation-name: vsSlideLeft; }
+.vs-right { animation-name: vsSlideRight; }
+@keyframes vsSlideLeft {
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes vsSlideRight {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.vs-portrait {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid currentColor;
+  background: rgba(10,6,24,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 40px currentColor, inset 0 0 20px rgba(255,255,255,0.05);
+  animation: vsPortraitPulse 1s ease-in-out infinite alternate;
+}
+@keyframes vsPortraitPulse {
+  from { box-shadow: 0 0 30px currentColor, inset 0 0 20px rgba(255,255,255,0.05); }
+  to   { box-shadow: 0 0 60px currentColor, inset 0 0 30px rgba(255,255,255,0.1); }
+}
+.vs-portrait svg { width: 100%; height: 100%; }
+.vs-name {
+  font-family: 'Black Ops One', cursive;
+  font-size: clamp(24px, 4vh, 42px);
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px currentColor, 0 4px 0 #000;
+  color: inherit;
+}
+.vs-tag {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 3px;
+  padding: 4px 12px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.vs-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vs-text {
+  font-family: 'Black Ops One', cursive;
+  font-size: clamp(60px, 12vh, 120px);
+  color: #fff7a1;
+  text-shadow:
+    0 0 30px #fff7a1,
+    0 0 60px #ff9ecd,
+    0 6px 0 #0a0618;
+  animation: vsPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes vsPulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+/* ============================================================
+   COMBO CALL (texto flotante "¡COMBO!")
+   ============================================================ */
+.combo-call {
+  display: none;
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 40;
+  pointer-events: none;
+  flex-direction: column;
+  align-items: center;
+}
+.combo-call.active {
+  display: flex;
+  animation: comboCallAnim 1.2s ease-out forwards;
+}
+@keyframes comboCallAnim {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  25%  { transform: translate(-50%, -50%) scale(1); }
+  75%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1) translateY(-30px); }
+}
+.combo-call-text {
+  font-family: 'Black Ops One', cursive;
+  font-size: clamp(36px, 8vh, 80px);
+  color: #fff7a1;
+  text-shadow:
+    0 0 20px #fff7a1,
+    0 0 40px #ffb894,
+    0 4px 0 #0a0618;
+  letter-spacing: 4px;
+}
