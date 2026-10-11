@@ -439,6 +439,11 @@ function update() {
       }
     }
 
+       // Intentar revivir si el jugador tiene la mejora
+    if (jugador.salud <= 0 && modoActual === 'roguelike' && typeof intentarRevivir === 'function') {
+      if (intentarRevivir()) return;
+    }
+
     if (jugador.salud <= 0 || ia.salud <= 0) {
       estadoJuego = 'roundover';
       roundTimer = 170;
