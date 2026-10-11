@@ -87,13 +87,13 @@ const SCENARIOS = [
 ];
 
 // ============================================================
-//  DIFICULTADES BASE
+//  DIFICULTADES DE LA IA (pesadilla suavizada)
 // ============================================================
 const AIS = {
   facil:     {name:'FÁCIL',     color:'#4ade80', reaction:26, aggression:0.35, blockChance:0.25, dodgeChance:0.15, speedMult:0.80, dmgMult:0.75, prediction:0.0, specialUse:0.3},
   normal:    {name:'NORMAL',    color:'#38bdf8', reaction:16, aggression:0.60, blockChance:0.45, dodgeChance:0.30, speedMult:0.95, dmgMult:1.00, prediction:0.2, specialUse:0.6},
   dificil:   {name:'DIFÍCIL',   color:'#fbbf24', reaction:9,  aggression:0.80, blockChance:0.65, dodgeChance:0.45, speedMult:1.10, dmgMult:1.15, prediction:0.45, specialUse:0.85},
-  pesadilla: {name:'PESADILLA', color:'#ef4444', reaction:7,  aggression:0.85, blockChance:0.75, dodgeChance:0.55, speedMult:1.18, dmgMult:1.20, prediction:0.55, specialUse:0.90}
+  pesadilla: {name:'PESADILLA', color:'#ef4444', reaction:9,  aggression:0.82, blockChance:0.68, dodgeChance:0.55, speedMult:1.12, dmgMult:1.18, prediction:0.55, specialUse:0.85}
 };
 
 // ============================================================
@@ -110,233 +110,149 @@ const MOVES = {
 };
 
 // ============================================================
-//  MEJORAS DEL ROGUELIKE
+//  MEJORAS CON MAXSTACK
 // ============================================================
 const MEJORAS = [
-  // ============================================================
-  //  COMUNES (genéricas para todos)
-  // ============================================================
-  { id:'daño1',      name:'FILO AFILADO',    icon:'🗡️', rarity:'comun',
+  // ---- COMUNES ----
+  { id:'daño1', maxStack:5, name:'FILO AFILADO', icon:'🗡️', rarity:'comun',
     desc:'+15% de daño con todos tus ataques.',
     apply: function(b){ b.dañoPct += 0.15; } },
-  { id:'vida1',      name:'CORAZÓN EXTRA',   icon:'❤️', rarity:'comun',
+  { id:'vida1', maxStack:5, name:'CORAZÓN EXTRA', icon:'❤️', rarity:'comun',
     desc:'+25 de vida máxima y te cura esa cantidad.',
     apply: function(b){ b.vidaMax += 25; } },
-  { id:'medidor1',   name:'FLUJO RÁPIDO',    icon:'⚡', rarity:'comun',
+  { id:'medidor1', maxStack:3, name:'FLUJO RÁPIDO', icon:'⚡', rarity:'comun',
     desc:'Tu medidor de especial se llena 30% más rápido.',
     apply: function(b){ b.medidorPct += 0.30; } },
-  { id:'defensa1',   name:'PIEL DURA',       icon:'🛡️', rarity:'comun',
+  { id:'defensa1', maxStack:3, name:'PIEL DURA', icon:'🛡️', rarity:'comun',
     desc:'Recibes 12% menos daño.',
     apply: function(b){ b.defensaPct += 0.12; } },
-  { id:'velocidad1', name:'PIES LIGEROS',    icon:'💨', rarity:'comun',
+  { id:'velocidad1', maxStack:3, name:'PIES LIGEROS', icon:'💨', rarity:'comun',
     desc:'+12% velocidad de movimiento.',
     apply: function(b){ b.velocidadPct += 0.12; } },
-  { id:'cura1',      name:'BOTIQUÍN',        icon:'💊', rarity:'comun',
+  { id:'cura1', maxStack:3, name:'BOTIQUÍN', icon:'💊', rarity:'comun',
     desc:'Al empezar cada piso, +15 de vida extra.',
     apply: function(b){ b.curaEntrePisos += 15; } },
-  { id:'medidor2',   name:'CORAZÓN DE FUEGO',icon:'🔥', rarity:'comun',
+  { id:'medidor2', maxStack:3, name:'CORAZÓN DE FUEGO', icon:'🔥', rarity:'comun',
     desc:'Empiezas cada pelea con 20% del medidor lleno.',
     apply: function(b){ b.medidorInicial += 0.20; } },
 
-  // ============================================================
-  //  RARAS (genéricas)
-  // ============================================================
-  { id:'critico',    name:'GOLPE CRÍTICO',   icon:'🎯', rarity:'rara',
+  // ---- RARAS ----
+  { id:'critico', maxStack:3, name:'GOLPE CRÍTICO', icon:'🎯', rarity:'rara',
     desc:'15% de probabilidad de hacer daño x2.',
     apply: function(b){ b.critChance += 0.15; } },
-  { id:'vampirismo', name:'VAMPIRISMO',      icon:'🩸', rarity:'rara',
+  { id:'vampirismo', maxStack:3, name:'VAMPIRISMO', icon:'🩸', rarity:'rara',
     desc:'Te curas 5% del daño que infliges.',
     apply: function(b){ b.vampirismo += 0.05; } },
-  { id:'regenera',   name:'REGENERACIÓN',    icon:'🌿', rarity:'rara',
+  { id:'regenera', maxStack:3, name:'REGENERACIÓN', icon:'🌿', rarity:'rara',
     desc:'Recuperas 1.5 de vida por segundo.',
     apply: function(b){ b.regeneracion += 1.5; } },
-  { id:'bloqueo',    name:'MURO DE HIERRO',  icon:'🧱', rarity:'rara',
+  { id:'bloqueo', maxStack:2, name:'MURO DE HIERRO', icon:'🧱', rarity:'rara',
     desc:'Bloquear reduce el daño un 40% adicional.',
     apply: function(b){ b.bloqueoExtraPct += 0.40; } },
-  { id:'puño1',      name:'PUÑOS DE ACERO',  icon:'👊', rarity:'rara',
+  { id:'puño1', maxStack:2, name:'PUÑOS DE ACERO', icon:'👊', rarity:'rara',
     desc:'+40% de daño con puñetazos.',
     apply: function(b){ b.punchPct += 0.40; } },
-  { id:'patada1',    name:'PIERNAS DE HIERRO', icon:'🦵', rarity:'rara',
+  { id:'patada1', maxStack:2, name:'PIERNAS DE HIERRO', icon:'🦵', rarity:'rara',
     desc:'+35% de daño con patadas y barridos.',
     apply: function(b){ b.kickPct += 0.35; } },
-  { id:'uppercut1',  name:'COHETE',          icon:'🚀', rarity:'rara',
+  { id:'uppercut1', maxStack:2, name:'COHETE', icon:'🚀', rarity:'rara',
     desc:'+50% de daño con uppercut.',
     apply: function(b){ b.uppercutPct += 0.50; } },
-  { id:'combo1',     name:'ESPÍRITU DE COMBO', icon:'🌀', rarity:'rara',
+  { id:'combo1', maxStack:5, name:'ESPÍRITU DE COMBO', icon:'🌀', rarity:'rara',
     desc:'Cada golpe del combo suma +5% de daño (max +50%).',
     apply: function(b){ b.comboMasterPct += 0.05; } },
-  { id:'sangrado',   name:'FILO SANGRANTE',  icon:'🔴', rarity:'rara',
+  { id:'sangrado', maxStack:3, name:'FILO SANGRANTE', icon:'🔴', rarity:'rara',
     desc:'Tus golpes aplican sangrado: 1 daño/segundo durante 3s.',
     apply: function(b){ b.sangradoPct += 1; } },
 
-  // ============================================================
-  //  ÉPICAS (genéricas)
-  // ============================================================
-  { id:'dash1',      name:'SOMBRA FANTASMA', icon:'👻', rarity:'epica',
-    desc:'Tu dash es más largo y te da invulnerabilidad breve.',
-    apply: function(b){ b.dashPct += 0.5; b.dashInvuln = true; } },
-  { id:'espejo',     name:'ESCUDO ESPEJO',   icon:'🪞', rarity:'epica',
+  // ---- ÉPICAS ----
+  { id:'dash1', maxStack:3, name:'SOMBRA FANTASMA', icon:'👻', rarity:'epica',
+    desc:'Tu dash es más largo. Cada stack suma +8 frames de invulnerabilidad.',
+    apply: function(b){ b.dashPct += 0.5; b.dashInvuln += 1; } },
+  { id:'espejo', maxStack:2, name:'ESCUDO ESPEJO', icon:'🪞', rarity:'epica',
     desc:'Reflejas el 15% del daño bloqueado al atacante.',
     apply: function(b){ b.reflejoPct += 0.15; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: ROCKY (tanque defensivo)
-  // ============================================================
-  { id:'rocky1', name:'MURO ETERNO',    icon:'🏔️', rarity:'rara', soloPara:'rocky',
+  // ---- ROCKY ----
+  { id:'rocky1', maxStack:2, name:'MURO ETERNO', icon:'🏔️', rarity:'rara', soloPara:'rocky',
     desc:'+20% de reducción de daño adicional.',
     apply: function(b){ b.defensaPct += 0.20; } },
-  { id:'rocky2', name:'CONTRAATAQUE',   icon:'↩️', rarity:'rara', soloPara:'rocky',
+  { id:'rocky2', maxStack:2, name:'CONTRAATAQUE', icon:'↩️', rarity:'rara', soloPara:'rocky',
     desc:'Al bloquear un golpe, devuelves 25% del daño.',
     apply: function(b){ b.reflejoPct += 0.25; } },
-  { id:'rocky3', name:'CORAZÓN DE PIEDRA', icon:'🪨', rarity:'epica', soloPara:'rocky',
+  { id:'rocky3', maxStack:2, name:'CORAZÓN DE PIEDRA', icon:'🪨', rarity:'epica', soloPara:'rocky',
     desc:'+60 de vida máxima y +10% defensa.',
     apply: function(b){ b.vidaMax += 60; b.defensaPct += 0.10; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: BLAZE (velocidad y presión)
-  // ============================================================
-  { id:'blaze1', name:'VIENTO CORTANTE', icon:'🌪️', rarity:'rara', soloPara:'blaze',
+  // ---- BLAZE ----
+  { id:'blaze1', maxStack:2, name:'VIENTO CORTANTE', icon:'🌪️', rarity:'rara', soloPara:'blaze',
     desc:'Tu dash es 50% más rápido y hace daño al pasar.',
     apply: function(b){ b.dashPct += 0.5; b.dashDaño += 4; } },
-  { id:'blaze2', name:'TRIPLE SALTO',    icon:'🕊️', rarity:'rara', soloPara:'blaze',
+  { id:'blaze2', maxStack:2, name:'TRIPLE SALTO', icon:'🕊️', rarity:'rara', soloPara:'blaze',
     desc:'Puedes hacer un salto extra en el aire.',
     apply: function(b){ b.saltosExtra += 1; } },
-  { id:'blaze3', name:'FURIA INCESANTE', icon:'⚡', rarity:'epica', soloPara:'blaze',
+  { id:'blaze3', maxStack:2, name:'FURIA INCESANTE', icon:'⚡', rarity:'epica', soloPara:'blaze',
     desc:'+25% velocidad y +20% daño en combos de 3 o más.',
     apply: function(b){ b.velocidadPct += 0.25; b.velocidadComboPct += 0.20; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: TITAN (fuerza y aguante)
-  // ============================================================
-  { id:'titan1', name:'PIEL DE ROCA',    icon:'🛡️', rarity:'rara', soloPara:'titan',
+  // ---- TITAN ----
+  { id:'titan1', maxStack:3, name:'PIEL DE ROCA', icon:'🛡️', rarity:'rara', soloPara:'titan',
     desc:'+80 de vida máxima.',
     apply: function(b){ b.vidaMax += 80; } },
-  { id:'titan2', name:'SUPER ARMOR',     icon:'💪', rarity:'rara', soloPara:'titan',
-    desc:'Los golpes débiles no te interrumpen.',
-    apply: function(b){ b.superArmorLeve = true; } },
-  { id:'titan3', name:'PUÑOS MONTAÑA',   icon:'🏔️', rarity:'epica', soloPara:'titan',
+  { id:'titan2', maxStack:3, name:'SUPER ARMOR', icon:'💪', rarity:'rara', soloPara:'titan',
+    desc:'Los golpes débiles no te interrumpen. Cada stack sube el umbral.',
+    apply: function(b){ b.superArmorLeve += 1; } },
+  { id:'titan3', maxStack:2, name:'PUÑOS MONTAÑA', icon:'🏔️', rarity:'epica', soloPara:'titan',
     desc:'+60% daño con puñetazos y +30% daño con patadas.',
     apply: function(b){ b.punchPct += 0.60; b.kickPct += 0.30; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: SHADOW (ninjutsu)
-  // ============================================================
-  { id:'shadow1', name:'HOJA SOMBRÍA',    icon:'🗡️', rarity:'rara', soloPara:'shadow',
+  // ---- SHADOW ----
+  { id:'shadow1', maxStack:2, name:'HOJA SOMBRÍA', icon:'🗡️', rarity:'rara', soloPara:'shadow',
     desc:'+30% de daño con puñetazos y patadas.',
     apply: function(b){ b.punchPct += 0.30; b.kickPct += 0.30; } },
-  { id:'shadow2', name:'PASO FANTASMA',   icon:'👤', rarity:'rara', soloPara:'shadow',
+  { id:'shadow2', maxStack:3, name:'PASO FANTASMA', icon:'👤', rarity:'rara', soloPara:'shadow',
     desc:'Tu dash te da invulnerabilidad 0.3s más larga.',
-    apply: function(b){ b.dashInvuln = true; b.dashInvulnExtra += 18; } },
-  { id:'shadow3', name:'KAGE BUNSHIN',    icon:'🌀', rarity:'epica', soloPara:'shadow',
-    desc:'Al usar especial, dejas una copia que golpea al rival.',
-    apply: function(b){ b.clonEspecial = true; } },
+    apply: function(b){ b.dashInvuln += 1; b.dashInvulnExtra += 18; } },
+  { id:'shadow3', maxStack:3, name:'KAGE BUNSHIN', icon:'🌀', rarity:'epica', soloPara:'shadow',
+    desc:'Al usar especial, dejas un clon que golpea. Cada stack = +1 clon.',
+    apply: function(b){ b.clonEspecial += 1; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: FROST (hielo y control)
-  // ============================================================
-  { id:'frost1', name:'ESCARCHA PROFUNDA', icon:'❄️', rarity:'rara', soloPara:'frost',
+  // ---- FROST ----
+  { id:'frost1', maxStack:2, name:'ESCARCHA PROFUNDA', icon:'❄️', rarity:'rara', soloPara:'frost',
     desc:'Tus golpes ralentizan al rival el doble.',
     apply: function(b){ b.slowPct += 1; } },
-  { id:'frost2', name:'VIENTO HELADO',    icon:'🌬️', rarity:'rara', soloPara:'frost',
+  { id:'frost2', maxStack:2, name:'VIENTO HELADO', icon:'🌬️', rarity:'rara', soloPara:'frost',
     desc:'Ralentizar al rival te da +15% daño sobre él.',
     apply: function(b){ b.dañoASlow += 0.15; } },
-  { id:'frost3', name:'CERO ABSOLUTO',    icon:'🧊', rarity:'epica', soloPara:'frost',
-    desc:'Tus especiales congelan al rival 2 segundos.',
-    apply: function(b){ b.congelaEspecial = true; } },
+  { id:'frost3', maxStack:3, name:'CERO ABSOLUTO', icon:'🧊', rarity:'epica', soloPara:'frost',
+    desc:'Tus especiales congelan más tiempo. Cada stack = +2 segundos.',
+    apply: function(b){ b.congelarEspecial += 1; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: BOLT (rayo y crítico)
-  // ============================================================
-  { id:'bolt1', name:'RAYO CONTINUO',     icon:'⚡', rarity:'rara', soloPara:'bolt',
+  // ---- BOLT ----
+  { id:'bolt1', maxStack:2, name:'RAYO CONTINUO', icon:'⚡', rarity:'rara', soloPara:'bolt',
     desc:'Sobrecarga cae cada 3 golpes en vez de cada 4.',
-    apply: function(b){ b.rayoFrecuencia = 3; } },
-  { id:'bolt2', name:'VOLTAJE',           icon:'🔋', rarity:'rara', soloPara:'bolt',
+    apply: function(b){ b.rayoFrecuencia = Math.max(2, b.rayoFrecuencia - 1); } },
+  { id:'bolt2', maxStack:3, name:'VOLTAJE', icon:'🔋', rarity:'rara', soloPara:'bolt',
     desc:'+30% daño cuando tu combo es de 4 o más.',
     apply: function(b){ b.comboMasterPct += 0.08; } },
-  { id:'bolt3', name:'TORMENTA PERPETUA', icon:'⛈️', rarity:'epica', soloPara:'bolt',
+  { id:'bolt3', maxStack:2, name:'TORMENTA PERPETUA', icon:'⛈️', rarity:'epica', soloPara:'bolt',
     desc:'+25% de probabilidad de crítico.',
     apply: function(b){ b.critChance += 0.25; } },
 
-  // ============================================================
-  //  EXCLUSIVAS: PHOENIX (regeneración y fuego)
-  // ============================================================
-  { id:'phoenix1', name:'FUEGO SAGRADO',   icon:'🔥', rarity:'rara', soloPara:'phoenix',
+  // ---- PHOENIX ----
+  { id:'phoenix1', maxStack:3, name:'FUEGO SAGRADO', icon:'🔥', rarity:'rara', soloPara:'phoenix',
     desc:'+2 de regeneración por segundo.',
     apply: function(b){ b.regeneracion += 2; } },
-  { id:'phoenix2', name:'AVE FÉNIX',       icon:'🦅', rarity:'rara', soloPara:'phoenix',
+  { id:'phoenix2', maxStack:2, name:'AVE FÉNIX', icon:'🦅', rarity:'rara', soloPara:'phoenix',
     desc:'Al 30% de vida, ganas +30% de daño.',
-    apply: function(b){ b.furiaBajaVida = 0.30; } },
-  { id:'phoenix3', name:'RENACIMIENTO',    icon:'♻️', rarity:'epica', soloPara:'phoenix',
-    desc:'Una vez por piso, si mueres, revives con 40% de vida.',
-    apply: function(b){ b.revivir = true; } }
-];
-// Aplicar mejoras por rareza (probabilidades)
-const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
-
-// ============================================================
-//  TIENDA
-// ============================================================
-const SHOP_ITEMS = [
-  { id:'mejora_random', name:'MEJORA ALEATORIA', icon:'🎁', precio:60,
-    desc:'Una mejora aleatoria (común, rara o épica).' },
-  { id:'mejora_epica',  name:'MEJORA ÉPICA',     icon:'💎', precio:150,
-    desc:'Una mejora épica garantizada.' },
-  { id:'cura_total',    name:'CURA COMPLETA',    icon:'💚', precio:50,
-    desc:'Recuperas toda tu vida máxima.' },
-  { id:'vida_max',      name:'+40 VIDA MÁXIMA',  icon:'❤️', precio:80,
-    desc:'Aumenta tu vida máxima permanentemente.' },
-  { id:'medidor_lleno', name:'MEDIDOR CARGADO',  icon:'⚡', precio:40,
-    desc:'Empiezas cada pelea con el especial listo.' }
-];
-
-
-// ============================================================
-//  BOSSES (no aparecen en el menú, solo en roguelike)
-// ============================================================
-const BOSSES = [
-  { id:'void_lord', name:'SEÑOR DEL VACÍO', desc:'El devorador de mundos',
-    color:'#7c3aed', accent:'#a855f7',
-    maxHealth: 180, speed: 5.2, dmgMult: 1.3, jumpPower: -14,
-    stats:{hp:100, spd:88, pow:100, def:90},
-    abilityName:'', abilityDesc:'',
-    specialName:'APOCALIPSIS',
-    special:{damage:42, range:130, launch:true, teleport:true},
-    personality:'rushdown',
-    bossOnly: true }
+    apply: function(b){ b.furiaBajaVida += 0.30; } },
+  { id:'phoenix3', maxStack:3, name:'RENACIMIENTO', icon:'♻️', rarity:'epica', soloPara:'phoenix',
+    desc:'Revives con 40% de vida. Cada stack = +1 revivir por piso.',
+    apply: function(b){ b.revivir += 1; } }
 ];
 
 // ============================================================
-//  HELPERS DE PISO (boss / miniboss)
-// ============================================================
-// Cada 15 pisos → boss. Cada 30 → boss final con 3 fases.
-function esPisoBoss(piso)     { return piso > 0 && piso % 15 === 0; }
-function esPisoBossFinal(piso){ return piso > 0 && piso % 30 === 0; }
-function nombrePisoBoss(piso){
-  if (esPisoBossFinal(piso)) return BOSSES[0].name;
-  return 'CAMPEÓN DEL PISO ' + piso;
-}
-
-// Determinar el tipo de piso (prioriza boss > elite > evento)
-function tipoDePiso(piso) {
-  if (piso <= 0) return 'normal';
-  if (piso % 30 === 0) return 'boss_final';
-  if (piso % 15 === 0) return 'boss';
-  if (piso % 7 === 0) return 'tienda';
-  if (piso % 4 === 0) return 'elite';
-  if (piso % 5 === 0) {
-    const n = piso / 5;
-    return (n % 2 === 1) ? 'descanso' : 'tesoro';
-  }
-  return 'normal';
-}
-
-function esPisoElite(piso)   { return tipoDePiso(piso) === 'elite'; }
-function esPisoEvento(piso)  {
-  const t = tipoDePiso(piso);
-  return t === 'descanso' || t === 'tesoro';
-}
-// ============================================================
-//  SINERGIAS (se activan al tener 2+ mejoras)
+//  SINERGIAS
 // ============================================================
 const SINERGIAS = [
   { id:'sin_vampiro_sangre', nombre:'VAMPIRO SANGRIENTO',
@@ -346,8 +262,8 @@ const SINERGIAS = [
 
   { id:'sin_critico_combo', nombre:'FURIA CRÍTICA',
     icon:'⚡', requiere:['critico','combo1'],
-    desc:'+15% crítico y combos largos dan críticos garantizados desde el 5to golpe.',
-    apply: function(b){ b.critChance += 0.15; b.critGarantizadoCombo = true; } },
+    desc:'+15% crítico y críticos garantizados desde el 5to golpe.',
+    apply: function(b){ b.critChance += 0.15; b.critGarantizadoCombo += 1; } },
 
   { id:'sin_regen_defensa', nombre:'FORTALEZA ETERNA',
     icon:'🛡️', requiere:['regenera','defensa1'],
@@ -370,12 +286,73 @@ const SINERGIAS = [
     apply: function(b){ b.medidorInicial += 0.60; } }
 ];
 
+const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
+
 // ============================================================
-//  SISTEMA DE BONUSES (defaults para Fighter)
+//  TIENDA
+// ============================================================
+const SHOP_ITEMS = [
+  { id:'mejora_random', name:'MEJORA ALEATORIA', icon:'🎁', precio:60,
+    desc:'Una mejora aleatoria (común, rara o épica).' },
+  { id:'mejora_epica',  name:'MEJORA ÉPICA',     icon:'💎', precio:150,
+    desc:'Una mejora épica garantizada.' },
+  { id:'cura_total',    name:'CURA COMPLETA',    icon:'💚', precio:50,
+    desc:'Recuperas toda tu vida máxima.' },
+  { id:'vida_max',      name:'+40 VIDA MÁXIMA',  icon:'❤️', precio:80,
+    desc:'Aumenta tu vida máxima permanentemente.' },
+  { id:'medidor_lleno', name:'MEDIDOR CARGADO',  icon:'⚡', precio:40,
+    desc:'Empiezas cada pelea con el especial listo.' }
+];
+
+// ============================================================
+//  BOSSES
+// ============================================================
+const BOSSES = [
+  { id:'void_lord', name:'SEÑOR DEL VACÍO', desc:'El devorador de mundos',
+    color:'#7c3aed', accent:'#a855f7',
+    maxHealth: 180, speed: 5.2, dmgMult: 1.3, jumpPower: -14,
+    stats:{hp:100, spd:88, pow:100, def:90},
+    abilityName:'', abilityDesc:'',
+    specialName:'APOCALIPSIS',
+    special:{damage:42, range:130, launch:true, teleport:true},
+    personality:'rushdown',
+    bossOnly: true }
+];
+
+// ============================================================
+//  HELPERS DE PISO
+// ============================================================
+function esPisoBoss(piso)     { return piso > 0 && piso % 15 === 0; }
+function esPisoBossFinal(piso){ return piso > 0 && piso % 30 === 0; }
+function nombrePisoBoss(piso){
+  if (esPisoBossFinal(piso)) return BOSSES[0].name;
+  return 'CAMPEÓN DEL PISO ' + piso;
+}
+
+function tipoDePiso(piso) {
+  if (piso <= 0) return 'normal';
+  if (piso % 30 === 0) return 'boss_final';
+  if (piso % 15 === 0) return 'boss';
+  if (piso % 7 === 0) return 'tienda';
+  if (piso % 4 === 0) return 'elite';
+  if (piso % 5 === 0) {
+    const n = piso / 5;
+    return (n % 2 === 1) ? 'descanso' : 'tesoro';
+  }
+  return 'normal';
+}
+
+function esPisoElite(piso)   { return tipoDePiso(piso) === 'elite'; }
+function esPisoEvento(piso)  {
+  const t = tipoDePiso(piso);
+  return t === 'descanso' || t === 'tesoro';
+}
+
+// ============================================================
+//  BONUSES VACÍOS (booleanas convertidas a números)
 // ============================================================
 function bonusesVacios() {
   return {
-    // Originales
     vidaMax: 0,
     dañoPct: 0,
     medidorPct: 0,
@@ -391,8 +368,7 @@ function bonusesVacios() {
     uppercutPct: 0,
     comboMasterPct: 0,
     dashPct: 0,
-    dashInvuln: false,
-    // Nuevos de Fase 2
+    dashInvuln: 0,
     curaEntrePisos: 0,
     sangradoPct: 0,
     reflejoPct: 0,
@@ -400,17 +376,15 @@ function bonusesVacios() {
     dashInvulnExtra: 0,
     saltosExtra: 0,
     velocidadComboPct: 0,
-    superArmorLeve: false,
-    clonEspecial: false,
+    superArmorLeve: 0,
+    clonEspecial: 0,
     slowPct: 0,
     dañoASlow: 0,
-    congelamiento: 0,
-    congelarEspecial: false,
+    congelarEspecial: 0,
     rayoFrecuencia: 4,
     furiaBajaVida: 0,
-    revivir: false,
-    critGarantizadoCombo: false,
-    // Sinergias aplicadas (registro)
+    revivir: 0,
+    critGarantizadoCombo: 0,
     sinergiasActivas: []
   };
 }
