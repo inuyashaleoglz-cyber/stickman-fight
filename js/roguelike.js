@@ -98,7 +98,11 @@ function crearRun(personajeId) {
     esBossPisoFinal: false,
     esElitePiso: false,
     eleccionesRestantes: 0,
-    __vidaAlEntrar: undefined
+    __vidaAlEntrar: undefined,
+    oro: 0,
+    conquistasRealizadas: 0,
+    mejorasCompradasTienda: [],
+    tiendaVendidos: {}
   };
 }
 
@@ -194,14 +198,17 @@ function roguelikeIniciar(personajeId) {
 function roguelikeEmpezarPiso() {
   const tipo = tipoDePiso(run.piso);
 
-  // Si es evento → pantalla especial, sin pelea
   if (tipo === 'descanso' || tipo === 'tesoro') {
     iniciarEvento(tipo);
     estadoJuego = 'evento';
     return;
   }
+  if (tipo === 'tienda') {
+    mostrarTienda();
+    estadoJuego = 'evento';
+    return;
+  }
 
-  // A partir de aquí es pelea
   const jugadorDef = construirJugadorConBonuses();
   const rivalDef = crearRivalDelPiso(run.piso, run.personajeId);
 
@@ -324,18 +331,27 @@ function roguelikeAlTerminarPiso(ganador) {
 
   run.rivalesVencidos.push(run.piso);
 
+  // Oro por victoria
+  let oroGanado = 10 + run.piso * 2;
+  if (run.esElitePiso) oroGanado += 30;
+  if (run.esBossPiso) oroGanado += 60;
+  run.oro += oroGanado;
+
+  // Vida para siguiente piso
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
   const recuperacion = Math.round(vidaMax * 0.20);
   const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
   run.__vidaAlEntrar = vidaSiguiente;
 
-  if (run.piso >= MAX_PISO) {
-    run.activo = false;
-    registrarPisoRoguelike(MAX_PISO);
-    registrarRoguelikeGanado();
-    mostrarVictoriaRoguelike();
-    return;
+  // ¿Era piso de conquista?
+  const esConquista = (run.piso % 30 === 0);
+  if (esConquista) {
+    run.conquistasRealizadas++;
+    run.oro += 200;
+    window.__pendienteConquista = true;
+  } else {
+    window.__pendienteConquista = false;
   }
 
   if (run.esBossPiso) {
@@ -372,8 +388,17 @@ function roguelikeElegirMejora(mejora) {
   }
 
   run.eleccionesRestantes = 0;
-  run.piso++;
   ocultarPantallaMejoras();
+
+  if (window.__pendienteConquista) {
+    window.__pendienteConquista = false;
+    setTimeout(function() {
+      if (run && run.activo) mostrarConquista();
+    }, 300);
+    return;
+  }
+
+  run.piso++;
   setTimeout(function() {
     if (run && run.activo) roguelikeEmpezarPiso();
   }, 300);
@@ -469,8 +494,9 @@ function mostrarGameOverRoguelike() {
   const esRecord = run.piso >= records.mejorPisoRoguelike;
 
   stats.innerHTML =
-    'Piso alcanzado: <b>' + run.piso + ' / ' + MAX_PISO + '</b><br>' +
+    'Piso alcanzado: <b>' + run.piso + '</b><br>' +
     'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
+    'Oro acumulado: <b>' + run.oro + '</b><br>' +
     'Mejor combo: <b>' + run.comboTope + ' hits</b><br>' +
     '<br><b>MEJORAS:</b><br>' + listaMejoras +
     (esRecord ? '<br><span style="color:#4ade80">¡NUEVO RÉCORD!</span>' : '<br>Récord: piso ' + records.mejorPisoRoguelike);
@@ -479,7 +505,7 @@ function mostrarGameOverRoguelike() {
 }
 
 // ============================================================
-//  UI: VICTORIA TOTAL
+//  UI: VICTORIA (retirada o conquista final)
 // ============================================================
 function mostrarVictoriaRoguelike() {
   SFX.victory();
@@ -487,10 +513,13 @@ function mostrarVictoriaRoguelike() {
   const stats = document.getElementById('victoryStats');
 
   stats.innerHTML =
-    '¡Has conquistado los ' + MAX_PISO + ' pisos!<br><br>' +
+    'Te retiras en el piso <b>' + run.piso + '</b><br><br>' +
     'Personaje: <b>' + personajeJugador.name + '</b><br>' +
+    'Conquistas: <b>' + run.conquistasRealizadas + '</b><br>' +
+    'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
     'Mejor combo: <b>' + run.comboTope + ' hits</b><br>' +
-    'Mejoras totales: <b>' + run.mejorasTomadas.length + '</b>';
+    'Oro total: <b>' + run.oro + '</b><br>' +
+    'Mejoras: <b>' + run.mejorasTomadas.length + '</b>';
 
   overlay.classList.add('active');
 }
@@ -570,6 +599,116 @@ function mostrarTesoro() {
   run.eleccionesRestantes = 1;
   const opciones = elegirMejorasAleatoriasConRareza(3, 'epica');
   mostrarPantallaMejoras(opciones, '💎 TESORO · Elige una mejora épica');
+}
+
+// ============================================================
+//  CONQUISTA (cada 30 pisos)
+// ============================================================
+function mostrarConquista() {
+  const overlay = document.getElementById('conquistaOverlay');
+  const sub = document.getElementById('conquistaSub');
+  const stats = document.getElementById('conquistaStats');
+
+  sub.textContent = '¡Has superado ' + run.piso + ' pisos!';
+  stats.innerHTML =
+    'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
+    'Oro total: <b>' + run.oro + '</b><br>' +
+    'Mejoras: <b>' + run.mejorasTomadas.length + '</b><br>' +
+    '<br><span style="color:#fde047">🎁 +200 oro de bonus</span>';
+
+  overlay.classList.add('active');
+  estadoJuego = 'evento';
+}
+
+function conquistaContinuar() {
+  document.getElementById('conquistaOverlay').classList.remove('active');
+  run.piso++;
+  roguelikeEmpezarPiso();
+}
+
+function conquistaRetirarse() {
+  document.getElementById('conquistaOverlay').classList.remove('active');
+  run.activo = false;
+  registrarPisoRoguelike(run.piso);
+  mostrarVictoriaRoguelike();
+}
+
+// ============================================================
+//  TIENDA
+// ============================================================
+function mostrarTienda() {
+  const overlay = document.getElementById('tiendaOverlay');
+  const grid = document.getElementById('tiendaGrid');
+  const oroEl = document.getElementById('tiendaOroActual');
+  oroEl.textContent = run.oro;
+  grid.innerHTML = '';
+
+  if (!run.tiendaVendidos) run.tiendaVendidos = {};
+
+  SHOP_ITEMS.forEach(function(item) {
+    const card = document.createElement('div');
+    card.className = 'tienda-card';
+    if (run.tiendaVendidos[item.id]) card.classList.add('vendido');
+    else if (run.oro < item.precio) card.classList.add('sin-oro');
+
+    card.innerHTML =
+      '<span class="icon">' + item.icon + '</span>' +
+      '<div class="name">' + item.name + '</div>' +
+      '<div class="desc">' + item.desc + '</div>' +
+      '<div class="precio">' + (run.tiendaVendidos[item.id] ? '✓ COMPRADO' : item.precio + ' oro') + '</div>';
+
+    card.addEventListener('click', function() {
+      if (run.tiendaVendidos[item.id]) return;
+      if (run.oro < item.precio) return;
+      comprarItem(item);
+      mostrarTienda();
+    });
+    grid.appendChild(card);
+  });
+
+  overlay.classList.add('active');
+}
+
+function comprarItem(item) {
+  run.oro -= item.precio;
+  run.tiendaVendidos[item.id] = true;
+  SFX.upgrade();
+
+  switch (item.id) {
+    case 'mejora_random': {
+      const opciones = elegirMejorasAleatorias(1);
+      if (opciones[0]) aplicarMejora(opciones[0]);
+      break;
+    }
+    case 'mejora_epica': {
+      const opciones = elegirMejorasAleatoriasConRareza(1, 'epica');
+      if (opciones[0]) aplicarMejora(opciones[0]);
+      break;
+    }
+    case 'cura_total': {
+      const vidaMax = construirJugadorConBonuses().maxHealth;
+      run.__vidaAlEntrar = vidaMax;
+      break;
+    }
+    case 'vida_max': {
+      run.bonuses.vidaMax += 40;
+      const vidaMax = construirJugadorConBonuses().maxHealth;
+      const vidaActual = (run.__vidaAlEntrar !== undefined) ? run.__vidaAlEntrar : vidaMax;
+      run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + 40);
+      break;
+    }
+    case 'medidor_lleno': {
+      run.bonuses.medidorInicial = Math.max(run.bonuses.medidorInicial, 1.0);
+      break;
+    }
+  }
+}
+
+function salirTienda() {
+  document.getElementById('tiendaOverlay').classList.remove('active');
+  run.tiendaVendidos = {};
+  run.piso++;
+  roguelikeEmpezarPiso();
 }
 
 // ============================================================
@@ -722,10 +861,21 @@ function cerrarBuildOverlay() {
   if (el) el.classList.remove('active');
 }
 
-// Listener de TAB (una sola vez, al cargar)
+// ============================================================
+//  LISTENERS (TAB, conquista, tienda)
+// ============================================================
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Tab' && typeof modoActual !== 'undefined' && modoActual === 'roguelike' && run && run.activo) {
     e.preventDefault();
     toggleBuildOverlay();
   }
+});
+
+window.addEventListener('load', function() {
+  const btnCont = document.getElementById('conquistaContinuarBtn');
+  const btnRet = document.getElementById('conquistaRetirarseBtn');
+  const btnSalir = document.getElementById('tiendaSalirBtn');
+  if (btnCont) btnCont.addEventListener('click', conquistaContinuar);
+  if (btnRet) btnRet.addEventListener('click', conquistaRetirarse);
+  if (btnSalir) btnSalir.addEventListener('click', salirTienda);
 });
