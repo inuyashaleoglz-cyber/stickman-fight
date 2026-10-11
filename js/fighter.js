@@ -943,9 +943,9 @@ class Fighter {
     if (this.combo >= 2) {
       ctx.save();
       ctx.textAlign = 'center';
-      ctx.font = '900 22px Segoe UI, sans-serif';
-      ctx.fillStyle = '#fbbf24';
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 4;
+      ctx.font = '22px "Black Ops One", sans-serif';
+      ctx.fillStyle = '#fff7a1';
+      ctx.strokeStyle = '#0a0618'; ctx.lineWidth = 4;
       const txt = this.combo + ' HITS!';
       const yPos = this.y - 130 + Math.sin(t*0.3)*3;
       ctx.strokeText(txt, this.x, yPos);
