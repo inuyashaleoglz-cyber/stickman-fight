@@ -33,6 +33,11 @@ let slowmoTimer = 0;
 function iniciarRonda() {
   jugador.reset(200, 1);
   ia.reset(W - 200, -1);
+  particles.length = 0;
+  dmgNumbers.length = 0;
+  impactRings.length = 0;
+  projectiles.length = 0;
+  lightningBolts.length = 0;
   koZoom = 1;
   koZoomTarget = 1;
   koFocusX = 0;
@@ -40,11 +45,6 @@ function iniciarRonda() {
   slowmoFactor = 1;
   slowmoTimer = 0;
   impactFrameTimer = 0;
-  particles.length = 0;
-  dmgNumbers.length = 0;
-  impactRings.length = 0;
-  projectiles.length = 0;
-  lightningBolts.length = 0;
   estadoJuego = 'countdown';
   countdownTimer = 180;
   mensajeGrande = ''; mensajeTimer = 0;
@@ -54,12 +54,11 @@ function iniciarRonda() {
 
 function iniciarPartida() {
   if (modoActual === 'roguelike') {
-    playMusic('combat');
+    if (typeof playMusic === 'function') playMusic('combat');
     roguelikeIniciar(personajeJugador.id);
     return;
   }
-  playMusic('combat');
-  
+  if (typeof playMusic === 'function') playMusic('combat');
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
   personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; });
@@ -68,6 +67,7 @@ function iniciarPartida() {
   victoriasJugador = 0; victoriasIA = 0;
   comboTopeEstaPartida = 0;
   escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
+  if (typeof playAmbient === 'function') playAmbient(SCENARIOS[escenarioActual].id);
   iniciarRonda();
 }
 
@@ -318,8 +318,7 @@ function drawHUD() {
   ctx.fillStyle = 'rgba(208,183,255,0.5)';
   ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
 
-  // Sinergias activas (roguelike)
-    if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
+  if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
     ctx.font = '10px "Press Start 2P", monospace';
     ctx.fillStyle = '#d0b7ff';
     ctx.textAlign = 'left';
@@ -330,21 +329,21 @@ function drawHUD() {
       if (s) texto += s.icon + ' ' + s.nombre + (idx < run.bonuses.sinergiasActivas.length - 1 ? ' · ' : '');
     });
     ctx.fillText(texto, 20, H - 15);
+    ctx.shadowBlur = 0;
   }
 
-  // Oro (roguelike)
   if (modoActual === 'roguelike' && run) {
     ctx.font = '12px "Press Start 2P", monospace';
     ctx.fillStyle = '#fff7a1';
     ctx.textAlign = 'right';
     ctx.shadowColor = '#fff7a1'; ctx.shadowBlur = 10;
     ctx.fillText('💰 ' + run.oro, W - 20, y + barH + 55);
-    ctx.shadowBlur = 0;;
+    ctx.shadowBlur = 0;
   }
 }
 
 // ============================================================
-//  MENSAJES Y PAUSA
+//  MENSAJES
 // ============================================================
 function drawBigMessage() {
   if (!mensajeGrande) return;
@@ -372,17 +371,17 @@ function drawCountdown() {
   const color = seg > 0 ? '#fff7a1' : '#9dffd4';
   ctx.shadowColor = color; ctx.shadowBlur = 50;
   ctx.fillStyle = color;
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 10;
+  ctx.strokeStyle = '#0a0618'; ctx.lineWidth = 10;
   ctx.strokeText(texto, 0, 0);
   ctx.fillText(texto, 0, 0);
   ctx.restore();
 }
 
 function drawPausa() {
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillStyle = 'rgba(10,6,24,0.85)';
   ctx.fillRect(0, 0, W, H);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-   ctx.font = '80px "Black Ops One", sans-serif';
+  ctx.font = '80px "Black Ops One", sans-serif';
   ctx.fillStyle = '#f5f0ff';
   ctx.shadowColor = '#9dffd4'; ctx.shadowBlur = 30;
   ctx.fillText('PAUSA', W/2, H/2 - 40);
@@ -392,6 +391,8 @@ function drawPausa() {
   ctx.fillText('P — CONTINUAR', W/2, H/2 + 30);
   ctx.fillStyle = '#ff7a7a';
   ctx.fillText('R — REINICIAR', W/2, H/2 + 65);
+  ctx.fillStyle = '#d0b7ff';
+  ctx.fillText('M — MUTE', W/2, H/2 + 100);
 }
 
 // ============================================================
@@ -401,7 +402,6 @@ function update() {
   time++;
   updateAllEffects();
 
-  // Impact frame: congela 4 frames tras un golpe fuerte
   if (impactFrameTimer > 0) {
     impactFrameTimer--;
     return;
@@ -416,7 +416,6 @@ function update() {
   if (estadoJuego === 'evento') return;
 
   if (estadoJuego === 'boss_warning') {
-    // Fallback por si el timer se perdió
     if (typeof bossWarningTimer !== 'number' || isNaN(bossWarningTimer)) {
       bossWarningTimer = 90;
     }
@@ -432,8 +431,8 @@ function update() {
 
   if (estadoJuego === 'countdown') {
     countdownTimer--;
-    if (countdownTimer % 60 === 0 && countdownTimer > 0) SFX.count();
-    if (countdownTimer <= 0) { estadoJuego = 'fighting'; SFX.fight(); }
+    if (countdownTimer % 60 === 0 && countdownTimer > 0 && typeof SFX !== 'undefined') SFX.count();
+    if (countdownTimer <= 0) { estadoJuego = 'fighting'; if (typeof SFX !== 'undefined') SFX.fight(); }
     jugador.facing = ia.x > jugador.x ? 1 : -1;
     ia.facing = jugador.x > ia.x ? 1 : -1;
     return;
@@ -461,7 +460,7 @@ function update() {
         spawnParticles(ia.x, ia.y - 55, 40, '#f97316', 14);
         spawnRing(ia.x, ia.y - 55, '#f97316', 180);
         shake(20);
-        SFX.special();
+        if (typeof SFX !== 'undefined') SFX.special();
         mensajeGrande = '¡FASE 2!';
         mensajeTimer = 90;
       } else if (ia.faseActual === 2 && hpPct < 0.33) {
@@ -475,13 +474,13 @@ function update() {
         spawnParticles(ia.x, ia.y - 55, 60, '#ef4444', 16);
         spawnRing(ia.x, ia.y - 55, '#ef4444', 220);
         shake(25);
-        SFX.special();
+        if (typeof SFX !== 'undefined') SFX.special();
         mensajeGrande = '¡FASE 3!';
         mensajeTimer = 90;
       }
     }
 
-       // Intentar revivir si el jugador tiene la mejora
+    // Intentar revivir (Phoenix épica)
     if (jugador.salud <= 0 && modoActual === 'roguelike' && typeof intentarRevivir === 'function') {
       if (intentarRevivir()) return;
     }
@@ -489,7 +488,8 @@ function update() {
     if (jugador.salud <= 0 || ia.salud <= 0) {
       estadoJuego = 'roundover';
       roundTimer = 170;
-      SFX.ko(); shake(20);
+      if (typeof SFX !== 'undefined') SFX.ko();
+      shake(20);
 
       const jugadorGano = ia.salud <= 0 && jugador.salud > 0;
 
@@ -510,7 +510,7 @@ function update() {
   if (estadoJuego === 'roundover') {
     roundTimer--;
 
-    // Configurar cámara al inicio del KO (solo una vez)
+    // Configurar cámara de KO (una vez)
     if (roundTimer === 169) {
       const dead = jugador.salud <= 0 ? jugador : ia;
       koZoomTarget = 1.35;
@@ -520,20 +520,20 @@ function update() {
       slowmoFactor = 0.35;
     }
 
-    // Animar zoom suavemente
     koZoom += (koZoomTarget - koZoom) * 0.06;
 
-    // Slow motion
     if (slowmoTimer > 0) {
       slowmoTimer--;
       if (slowmoTimer === 0) slowmoFactor = 1;
     }
 
     [jugador, ia].forEach(function(f) {
-      f.vy += GRAVITY * slowmoFactor; f.y += f.vy * slowmoFactor;
+      f.vy += GRAVITY * slowmoFactor;
+      f.y += f.vy * slowmoFactor;
       if (f.y >= GROUND) { f.y = GROUND; f.vy = 0; }
       if (f.saludGhost > f.salud) f.saludGhost -= 0.6;
     });
+
     if (roundTimer <= 0) {
       if (modoActual === 'roguelike' && run && run.activo) {
         const ganador = window.__roguelikeGanador;
@@ -553,6 +553,9 @@ function update() {
         mensajeTimer = 999999;
         if (victoriasJugador >= ROUNDS_TO_WIN) {
           registrarVictoria(personajeJugador.id, comboTopeEstaPartida);
+          if (typeof SFX !== 'undefined') SFX.victory();
+        } else {
+          if (typeof SFX !== 'undefined') SFX.defeat();
         }
       } else iniciarRonda();
     }
@@ -563,17 +566,16 @@ function update() {
 //  RENDER
 // ============================================================
 function render() {
-ctx.save();
+  ctx.save();
   if (shakeAmount > 0)
     ctx.translate((Math.random()-0.5)*shakeAmount, (Math.random()-0.5)*shakeAmount);
 
-  // Flash blanco sobre impact frame
   if (impactFrameTimer > 0) {
     ctx.fillStyle = 'rgba(255,255,255,' + (impactFrameTimer / 4 * 0.35) + ')';
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Aplicar zoom cinematográfico al KO
+  // Zoom cinematográfico del KO
   if (koZoom !== 1 || koFocusX !== 0) {
     ctx.save();
     ctx.translate(koFocusX, koFocusY);
@@ -607,33 +609,34 @@ ctx.save();
   drawParticles();
   drawDamageNumbers();
 
-  ctx.restore();
-  
-  // Cerrar el zoom cinematográfico
+  // Cerrar zoom cinematográfico
   if (koZoom !== 1 || koFocusX !== 0) {
     ctx.restore();
   }
+
+  ctx.restore();
+
   if (jugador && ia) drawHUD();
   if (estadoJuego === 'countdown') drawCountdown();
   if (estadoJuego === 'roundover') drawBigMessage();
 
   if (estadoJuego === 'matchover' && modoActual === 'rapido') {
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillStyle = 'rgba(10,6,24,0.85)';
     ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const ganaste = victoriasJugador >= ROUNDS_TO_WIN;
-    ctx.font = '900 90px Segoe UI, sans-serif';
-    ctx.fillStyle = ganaste ? '#4ade80' : '#f87171';
+    ctx.font = '90px "Black Ops One", sans-serif';
+    ctx.fillStyle = ganaste ? '#9dffd4' : '#ff7a7a';
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 50;
     ctx.fillText(mensajeGrande, W/2, H/2 - 80);
     ctx.shadowBlur = 0;
-    ctx.font = 'bold 24px Segoe UI, sans-serif'; ctx.fillStyle = '#fff';
-    ctx.fillText('Rondas: ' + victoriasJugador + ' - ' + victoriasIA, W/2, H/2 - 10);
-    ctx.font = 'bold 18px Segoe UI, sans-serif'; ctx.fillStyle = '#fbbf24';
-    ctx.fillText('Mejor combo: ' + comboTopeEstaPartida + ' golpes', W/2, H/2 + 30);
-    ctx.font = '18px Segoe UI, sans-serif'; ctx.fillStyle = '#aaa';
-    ctx.fillText('Presiona R para jugar otra vez', W/2, H/2 + 90);
-    ctx.fillText('o vuelve al menú para cambiar personaje', W/2, H/2 + 120);
+    ctx.font = '13px "Press Start 2P", monospace'; ctx.fillStyle = '#f5f0ff';
+    ctx.fillText('RONDAS: ' + victoriasJugador + ' - ' + victoriasIA, W/2, H/2 - 10);
+    ctx.font = '12px "Press Start 2P", monospace'; ctx.fillStyle = '#fff7a1';
+    ctx.fillText('MEJOR COMBO: ' + comboTopeEstaPartida, W/2, H/2 + 30);
+    ctx.font = '11px "Press Start 2P", monospace'; ctx.fillStyle = '#a899c7';
+    ctx.fillText('R PARA REJUGAR', W/2, H/2 + 90);
+    ctx.fillText('O VUELVE AL MENÚ', W/2, H/2 + 120);
   }
 
   if (pausado) drawPausa();
@@ -705,12 +708,12 @@ function renderRecords() {
   } else {
     const fav = r.personajeFav ? CHARACTERS.find(function(c){return c.id === r.personajeFav;}) : null;
     const favName = fav ? fav.name : '—';
-    let texto = '🏆 Duelos ganados: ' + r.victorias + '  ·  Mejor combo: ' + r.mejorCombo;
+    let texto = '🏆 Duelos: ' + r.victorias + ' · Combo: ' + r.mejorCombo;
     if (r.mejorPisoRoguelike > 0) {
-      texto += '  ·  Roguelike: piso ' + r.mejorPisoRoguelike;
+      texto += ' · Roguelike: piso ' + r.mejorPisoRoguelike;
     }
     if (r.roguelikesGanados > 0) {
-      texto += '  ·  🎖️ ' + r.roguelikesGanados + ' conquistas';
+      texto += ' · 🎖️ ' + r.roguelikesGanados + ' conquistas';
     }
     el.textContent = texto;
   }
@@ -721,11 +724,12 @@ function setupMenu() {
   renderRecords();
 
   document.getElementById('modeRow').addEventListener('click', function(e) {
-    if (e.target.classList.contains('mode-btn')) {
+    if (e.target.classList.contains('mode-btn') || e.target.parentElement.classList.contains('mode-btn')) {
+      const btn = e.target.classList.contains('mode-btn') ? e.target : e.target.parentElement;
       const btns = document.querySelectorAll('.mode-btn');
       for (let i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
-      e.target.classList.add('selected');
-      modoActual = e.target.dataset.mode;
+      btn.classList.add('selected');
+      modoActual = btn.dataset.mode;
       const diffRow = document.getElementById('diffRow');
       diffRow.style.opacity = (modoActual === 'roguelike') ? '0.3' : '1';
       diffRow.style.pointerEvents = (modoActual === 'roguelike') ? 'none' : 'auto';
@@ -742,7 +746,7 @@ function setupMenu() {
   });
 
   document.getElementById('startBtn').addEventListener('click', function() {
-    initAudio();
+    if (typeof initAudio === 'function') initAudio();
     document.getElementById('menu').style.display = 'none';
     document.getElementById('gameScreen').classList.add('active');
     iniciarPartida();
@@ -756,9 +760,8 @@ function setupMenu() {
     document.getElementById('gameOverOverlay').classList.remove('active');
     volverAlMenu();
   });
-    document.getElementById('goRetryBtn').addEventListener('click', function() {
+  document.getElementById('goRetryBtn').addEventListener('click', function() {
     document.getElementById('gameOverOverlay').classList.remove('active');
-    // Reiniciar roguelike con el mismo personaje desde el piso 1
     if (modoActual === 'roguelike') {
       const idPersonaje = run ? run.personajeId : personajeJugador.id;
       roguelikeIniciar(idPersonaje);
@@ -770,16 +773,6 @@ function setupMenu() {
     document.getElementById('victoryOverlay').classList.remove('active');
     volverAlMenu();
   });
-    
-  // Botón de saltar el aviso de boss/elite
-  document.getElementById('bossWarningSkipBtn').addEventListener('click', function() {
-    saltarAvisoBoss();
-  });
-
-  // Clic en cualquier parte del overlay también salta
-  document.getElementById('bossWarningOverlay').addEventListener('click', function(e) {
-    if (e.target.id === 'bossWarningOverlay') saltarAvisoBoss();
-  });
 
   // Botones de conquista y tienda
   const btnCont = document.getElementById('conquistaContinuarBtn');
@@ -788,9 +781,24 @@ function setupMenu() {
   if (btnCont) btnCont.addEventListener('click', function() { conquistaContinuar(); });
   if (btnRet) btnRet.addEventListener('click', function() { conquistaRetirarse(); });
   if (btnSalir) btnSalir.addEventListener('click', function() { salirTienda(); });
+
+  // Botón de saltar el aviso de boss/elite
+  const btnSkip = document.getElementById('bossWarningSkipBtn');
+  if (btnSkip) btnSkip.addEventListener('click', function() { saltarAvisoBoss(); });
+
+  // Clic en el overlay de aviso también salta
+  const overlayBoss = document.getElementById('bossWarningOverlay');
+  if (overlayBoss) {
+    overlayBoss.addEventListener('click', function(e) {
+      if (e.target.id === 'bossWarningOverlay') saltarAvisoBoss();
+    });
+  }
 }
 
 function volverAlMenu() {
+  if (typeof playMusic === 'function') playMusic('menu');
+  if (typeof stopAmbient === 'function') stopAmbient();
+  bossWarningTimer = 0;
   document.getElementById('gameScreen').classList.remove('active');
   document.getElementById('menu').style.display = 'flex';
   document.getElementById('upgradeOverlay').classList.remove('active');
@@ -808,6 +816,11 @@ function volverAlMenu() {
   run = null;
   estadoJuego = 'menu';
   pausado = false;
+  impactFrameTimer = 0;
+  koZoom = 1;
+  koZoomTarget = 1;
+  koFocusX = 0;
+  koFocusY = 0;
   renderRecords();
 }
 
@@ -816,14 +829,15 @@ function volverAlMenu() {
 // ============================================================
 setupMenu();
 loop();
-// Intentar arrancar música tras la primera interacción
+
 document.addEventListener('keydown', function arrancarMusicaOnce() {
-  initAudio();
-  playMusic('menu');
+  if (typeof initAudio === 'function') initAudio();
+  if (typeof playMusic === 'function') playMusic('menu');
   document.removeEventListener('keydown', arrancarMusicaOnce);
 }, { once: true });
+
 document.addEventListener('click', function arrancarMusicaOnceClick() {
-  initAudio();
-  playMusic('menu');
+  if (typeof initAudio === 'function') initAudio();
+  if (typeof playMusic === 'function') playMusic('menu');
   document.removeEventListener('click', arrancarMusicaOnceClick);
 }, { once: true });
