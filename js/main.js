@@ -77,11 +77,10 @@ function togglePausa() {
 }
 
 function saltarAvisoBoss() {
-  console.log('[AVISO] saltarAvisoBoss llamado. estadoJuego =', estadoJuego);
   if (estadoJuego !== 'boss_warning') return;
-  if (window.__bossBackupTimeout) {
-    clearTimeout(window.__bossBackupTimeout);
-    window.__bossBackupTimeout = null;
+  if (window.__avisoTimer) {
+    clearTimeout(window.__avisoTimer);
+    window.__avisoTimer = null;
   }
   ocultarAvisoBoss();
   estadoJuego = 'countdown';
@@ -419,20 +418,6 @@ function update() {
   if (pausado) return;
 
   if (estadoJuego === 'evento') return;
-
-  if (estadoJuego === 'boss_warning') {
-    if (typeof bossWarningTimer !== 'number' || isNaN(bossWarningTimer)) {
-      bossWarningTimer = 90;
-    }
-    bossWarningTimer--;
-    if (bossWarningTimer <= 0) {
-      ocultarAvisoBoss();
-      estadoJuego = 'countdown';
-      countdownTimer = 180;
-      clearPresses();
-    }
-    return;
-  }
 
   if (estadoJuego === 'countdown') {
     countdownTimer--;
