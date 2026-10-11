@@ -321,6 +321,15 @@ function mostrarAvisoBoss(rivalDef) {
     icon.textContent = '⚠';
   }
   overlay.classList.add('active');
+  console.log('[AVISO] Boss mostrado. estadoJuego =', estadoJuego, 'timer =', bossWarningTimer);
+  // Respaldo por si el timer de frames falla
+  if (window.__bossBackupTimeout) clearTimeout(window.__bossBackupTimeout);
+  window.__bossBackupTimeout = setTimeout(function() {
+    console.log('[AVISO] Respaldo disparado. estadoJuego =', estadoJuego);
+    if (estadoJuego === 'boss_warning' && typeof saltarAvisoBoss === 'function') {
+      saltarAvisoBoss();
+    }
+  }, 3500);
 }
 
 function mostrarAvisoElite() {
@@ -334,6 +343,14 @@ function mostrarAvisoElite() {
   sub.textContent = '★ RECOMPENSA ÉPICA ASEGURADA ★';
   icon.textContent = '⚔';
   overlay.classList.add('active');
+  console.log('[AVISO] Élite mostrado. estadoJuego =', estadoJuego, 'timer =', bossWarningTimer);
+  if (window.__bossBackupTimeout) clearTimeout(window.__bossBackupTimeout);
+  window.__bossBackupTimeout = setTimeout(function() {
+    console.log('[AVISO] Respaldo disparado. estadoJuego =', estadoJuego);
+    if (estadoJuego === 'boss_warning' && typeof saltarAvisoBoss === 'function') {
+      saltarAvisoBoss();
+    }
+  }, 3500);
 }
 
 function ocultarAvisoBoss() {
