@@ -671,6 +671,16 @@ function setupMenu() {
     document.getElementById('gameOverOverlay').classList.remove('active');
     volverAlMenu();
   });
+    document.getElementById('goRetryBtn').addEventListener('click', function() {
+    document.getElementById('gameOverOverlay').classList.remove('active');
+    // Reiniciar roguelike con el mismo personaje desde el piso 1
+    if (modoActual === 'roguelike') {
+      const idPersonaje = run ? run.personajeId : personajeJugador.id;
+      roguelikeIniciar(idPersonaje);
+    } else {
+      iniciarPartida();
+    }
+  });
   document.getElementById('victoryMenuBtn').addEventListener('click', function() {
     document.getElementById('victoryOverlay').classList.remove('active');
     volverAlMenu();
