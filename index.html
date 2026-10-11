@@ -3,109 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stickman Fight</title>
+<title>STICKMAN FIGHT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bitcount+Single&family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div id="menu">
-  <h1>⚔ STICKMAN FIGHT</h1>
-  <p class="subtitle">EDICIÓN ULTIMATE</p>
+  <div class="menu-glow"></div>
 
-  <h2>Modo de juego</h2>
-  <div class="mode-row" id="modeRow">
-    <button class="mode-btn selected" data-mode="rapido">⚔ DUELO RÁPIDO</button>
-    <button class="mode-btn" data-mode="roguelike">🎲 ROGUELIKE · 30 PISOS</button>
+  <div class="title-block">
+    <h1 class="game-title">STICKMAN<span class="title-fight">FIGHT</span></h1>
+    <p class="subtitle">◆ ULTIMATE EDITION ◆</p>
   </div>
 
-  <h2>Elige tu luchador</h2>
-  <div class="char-grid" id="charGrid"></div>
+  <div class="menu-section">
+    <h2 class="section-label">MODO DE JUEGO</h2>
+    <div class="mode-row" id="modeRow">
+      <button class="mode-btn selected" data-mode="rapido">
+        <span class="mode-icon">⚔</span>
+        <span class="mode-name">DUELO RÁPIDO</span>
+        <span class="mode-sub">1 VS 1 CLÁSICO</span>
+      </button>
+      <button class="mode-btn" data-mode="roguelike">
+        <span class="mode-icon">🎲</span>
+        <span class="mode-name">ROGUELIKE</span>
+        <span class="mode-sub">RUN INFINITA</span>
+      </button>
+    </div>
+  </div>
 
-  <div class="bottom-row">
+  <div class="menu-section">
+    <h2 class="section-label">ELIGE TU LUCHADOR</h2>
+    <div class="char-grid" id="charGrid"></div>
+  </div>
+
+  <div class="menu-section">
+    <h2 class="section-label">DIFICULTAD</h2>
     <div class="difficulty-row" id="diffRow">
       <button class="diff-btn" data-diff="facil">FÁCIL</button>
       <button class="diff-btn selected" data-diff="normal">NORMAL</button>
       <button class="diff-btn" data-diff="dificil">DIFÍCIL</button>
       <button class="diff-btn" data-diff="pesadilla">🔥 PESADILLA</button>
     </div>
-    <button id="startBtn">EMPEZAR ▶</button>
   </div>
+
+  <button id="startBtn">
+    <span class="start-icon">▶</span>
+    <span class="start-text">PELEAR</span>
+  </button>
 
   <div id="recordsPanel" class="records-panel">🏆 Sin récords todavía. ¡Gana tu primera pelea!</div>
 </div>
 
 <div id="gameScreen">
-  <button id="backBtn">← Menú</button>
+  <button id="backBtn">← MENÚ</button>
   <div class="game-wrap">
     <canvas id="game" width="950" height="520"></canvas>
 
-    <!-- Overlay: elección de mejora (roguelike) -->
     <div id="upgradeOverlay" class="overlay">
       <div class="overlay-title">PISO SUPERADO</div>
       <div class="overlay-sub" id="upgradeSub">Elige una mejora</div>
       <div class="upgrade-grid" id="upgradeGrid"></div>
     </div>
 
-    <!-- Overlay: game over (roguelike) -->
     <div id="gameOverOverlay" class="overlay">
       <div class="overlay-title red" id="goTitle">DERROTA</div>
       <div class="overlay-sub" id="goSub"></div>
       <div class="overlay-stats" id="goStats"></div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:8px">
-        <button class="overlay-btn" id="goRetryBtn" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">🔁 REINTENTAR</button>
+        <button class="overlay-btn" id="goRetryBtn" style="background:linear-gradient(135deg,#fff7a1,#ffb894)">🔁 REINTENTAR</button>
         <button class="overlay-btn" id="goMenuBtn">VOLVER AL MENÚ</button>
       </div>
     </div>
 
-    <!-- Overlay: victoria total -->
     <div id="victoryOverlay" class="overlay">
       <div class="overlay-title gold">¡VICTORIA TOTAL!</div>
       <div class="overlay-sub">Has completado los 30 pisos</div>
       <div class="overlay-stats" id="victoryStats"></div>
       <button class="overlay-btn" id="victoryMenuBtn">VOLVER AL MENÚ</button>
     </div>
-  
-  <!-- Overlay: DESCANSO -->
+
+    <div id="bossWarningOverlay" class="overlay boss-warning-overlay">
+      <div class="boss-warning-icon" id="bossWarningIcon">⚠</div>
+      <div class="boss-warning-title" id="bossWarningTitle">CAMPEÓN DEL PISO 15</div>
+      <div class="boss-warning-sub" id="bossWarningSub">PREPÁRATE PARA EL COMBATE</div>
+    </div>
+
     <div id="descansoOverlay" class="overlay descanso-overlay">
       <div class="descanso-icon">💊</div>
       <div class="descanso-title">NODO DE DESCANSO</div>
       <div class="descanso-sub">Recupera fuerzas antes del siguiente combate</div>
       <div class="descanso-grid" id="descansoGrid"></div>
     </div>
-    <!-- Overlay: CONQUISTA (cada 30 pisos) -->
+
     <div id="conquistaOverlay" class="overlay conquista-overlay">
       <div class="conquista-icon">🏆</div>
       <div class="conquista-title">¡CONQUISTA!</div>
       <div class="conquista-sub" id="conquistaSub">Has superado 30 pisos</div>
       <div class="conquista-stats" id="conquistaStats"></div>
       <div class="conquista-buttons">
-        <button class="overlay-btn" id="conquistaContinuarBtn" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">CONTINUAR ▶</button>
-        <button class="overlay-btn" id="conquistaRetirarseBtn" style="background:linear-gradient(135deg,#4ade80,#22c55e)">RETIRARSE Y GUARDAR</button>
+        <button class="overlay-btn" id="conquistaContinuarBtn" style="background:linear-gradient(135deg,#fff7a1,#ffb894)">CONTINUAR ▶</button>
+        <button class="overlay-btn" id="conquistaRetirarseBtn">RETIRARSE Y GUARDAR</button>
       </div>
     </div>
 
-    <!-- Overlay: TIENDA -->
     <div id="tiendaOverlay" class="overlay tienda-overlay">
       <div class="tienda-header">
         <div class="tienda-title">💰 TIENDA</div>
-        <div class="tienda-oro">Oro: <span id="tiendaOroActual">0</span></div>
+        <div class="tienda-oro">ORO: <span id="tiendaOroActual">0</span></div>
       </div>
       <div class="tienda-grid" id="tiendaGrid"></div>
       <button class="overlay-btn" id="tiendaSalirBtn">SALIR ▶</button>
     </div>
 
-    <!-- Overlay: BUILD del jugador (TAB) -->
     <div id="buildOverlay" class="overlay build-overlay">
       <div class="build-content">
         <div class="build-header">
-          <h2>📊 TU BUILD — PISO <span id="buildPisoNum">1</span> / 30</h2>
+          <h2>📊 TU BUILD — PISO <span id="buildPisoNum">1</span></h2>
         </div>
-
         <div class="build-section">
           <h3>⚔ BONUS ACTIVOS</h3>
           <div class="build-stats" id="buildStats"></div>
         </div>
-
         <div class="build-columns">
           <div class="build-col">
             <h3>✦ MEJORAS (<span id="buildCountMejoras">0</span>)</h3>
@@ -116,29 +138,22 @@
             <div class="build-list" id="buildSinergias"></div>
           </div>
         </div>
-      <!-- Overlay: AVISO DE BOSS -->
-      <div id="bossWarningOverlay" class="overlay boss-warning-overlay">
-        <div class="boss-warning-icon" id="bossWarningIcon">⚠</div>
-        <div class="boss-warning-title" id="bossWarningTitle">CAMPEÓN DEL PISO 15</div>
-        <div class="boss-warning-sub" id="bossWarningSub">PREPÁRATE PARA EL COMBATE</div>
-    </div>
-
         <p class="build-hint">Presiona <b>TAB</b> para cerrar</p>
       </div>
     </div>
   </div>
 
   <div class="controls-info">
-    <div class="ctrl-box"><b>Mover</b><span class="key">A</span><span class="key">D</span></div>
-    <div class="ctrl-box"><b>Dash</b><span class="key">A</span><span class="key">A</span></div>
-    <div class="ctrl-box"><b>Saltar</b><span class="key">W</span></div>
-    <div class="ctrl-box"><b>Agachar</b><span class="key">S</span></div>
-    <div class="ctrl-box"><b>Puño</b><span class="key">J</span></div>
-    <div class="ctrl-box"><b>Patada</b><span class="key">K</span></div>
-    <div class="ctrl-box"><b>Uppercut</b><span class="key">U</span></div>
+    <div class="ctrl-box"><b>MOVER</b><span class="key">A</span><span class="key">D</span></div>
+    <div class="ctrl-box"><b>DASH</b><span class="key">A</span><span class="key">A</span></div>
+    <div class="ctrl-box"><b>SALTAR</b><span class="key">W</span></div>
+    <div class="ctrl-box"><b>AGACHAR</b><span class="key">S</span></div>
+    <div class="ctrl-box"><b>PUÑO</b><span class="key">J</span></div>
+    <div class="ctrl-box"><b>PATADA</b><span class="key">K</span></div>
+    <div class="ctrl-box"><b>UPPER</b><span class="key">U</span></div>
     <div class="ctrl-box"><b>ESPECIAL</b><span class="key">I</span></div>
-    <div class="ctrl-box"><b>Bloquear</b><span class="key">L</span></div>
-    <div class="ctrl-box"><b>Pausa</b><span class="key">P</span></div>
+    <div class="ctrl-box"><b>BLOQUEAR</b><span class="key">L</span></div>
+    <div class="ctrl-box"><b>PAUSA</b><span class="key">P</span></div>
   </div>
 </div>
 
