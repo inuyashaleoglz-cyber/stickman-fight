@@ -19,6 +19,12 @@ let escenarioActual = 0;
 let comboTopeEstaPartida = 0;
 let modoActual = 'rapido';
 let impactFrameTimer = 0;
+let koZoom = 1;
+let koZoomTarget = 1;
+let koFocusX = 0;
+let koFocusY = 0;
+let slowmoFactor = 1;
+let slowmoTimer = 0;
 
 // ============================================================
 //  CICLO DE PARTIDA
@@ -26,6 +32,13 @@ let impactFrameTimer = 0;
 function iniciarRonda() {
   jugador.reset(200, 1);
   ia.reset(W - 200, -1);
+  koZoom = 1;
+  koZoomTarget = 1;
+  koFocusX = 0;
+  koFocusY = 0;
+  slowmoFactor = 1;
+  slowmoTimer = 0;
+  impactFrameTimer = 0;
   particles.length = 0;
   dmgNumbers.length = 0;
   impactRings.length = 0;
@@ -480,8 +493,28 @@ function update() {
 
   if (estadoJuego === 'roundover') {
     roundTimer--;
+
+    // Configurar cámara al inicio del KO (solo una vez)
+    if (roundTimer === 169) {
+      const dead = jugador.salud <= 0 ? jugador : ia;
+      koZoomTarget = 1.35;
+      koFocusX = dead.x;
+      koFocusY = dead.y - 50;
+      slowmoTimer = 30;
+      slowmoFactor = 0.35;
+    }
+
+    // Animar zoom suavemente
+    koZoom += (koZoomTarget - koZoom) * 0.06;
+
+    // Slow motion
+    if (slowmoTimer > 0) {
+      slowmoTimer--;
+      if (slowmoTimer === 0) slowmoFactor = 1;
+    }
+
     [jugador, ia].forEach(function(f) {
-      f.vy += GRAVITY; f.y += f.vy;
+      f.vy += GRAVITY * slowmoFactor; f.y += f.vy * slowmoFactor;
       if (f.y >= GROUND) { f.y = GROUND; f.vy = 0; }
       if (f.saludGhost > f.salud) f.saludGhost -= 0.6;
     });
@@ -524,6 +557,14 @@ ctx.save();
     ctx.fillRect(0, 0, W, H);
   }
 
+  // Aplicar zoom cinematográfico al KO
+  if (koZoom !== 1 || koFocusX !== 0) {
+    ctx.save();
+    ctx.translate(koFocusX, koFocusY);
+    ctx.scale(koZoom, koZoom);
+    ctx.translate(-koFocusX, -koFocusY);
+  }
+
   drawBackground();
 
   // Aura dorada del elite
@@ -551,7 +592,11 @@ ctx.save();
   drawDamageNumbers();
 
   ctx.restore();
-
+  
+  // Cerrar el zoom cinematográfico
+  if (koZoom !== 1 || koFocusX !== 0) {
+    ctx.restore();
+  }
   if (jugador && ia) drawHUD();
   if (estadoJuego === 'countdown') drawCountdown();
   if (estadoJuego === 'roundover') drawBigMessage();
