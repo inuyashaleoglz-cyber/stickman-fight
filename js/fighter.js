@@ -641,7 +641,10 @@ class Fighter {
     const colorDmg = esCritico ? '#ef4444' : (mv.special ? '#fbbf24' : '#fff');
     spawnDamageNumber(hx, hy - 15, (esCritico ? '¡' : '-') + dmgFinal + (esCritico ? '!' : ''), colorDmg, esCritico || dmgFinal >= 12);    
     shake(esCritico ? 14 : (mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5)));
-    SFX.hit();
+    if (typeof shakeDirX !== 'undefined') {
+      shakeDirX = this.facing * (esCritico || mv.special ? 1.2 : 0.7);
+    }    SFX.hit();
+    
     // Activar impact frame en críticos y especiales
     if (typeof impactFrameTimer !== 'undefined') {
       if (esCritico || mv.special) impactFrameTimer = 4;
