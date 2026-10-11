@@ -676,24 +676,41 @@ document.addEventListener('keydown', function(e) {
 // ============================================================
 function anunciar(texto, tono, velocidad) {
   if (!audioCtx) return;
-  tono = tono || 0.6;
-  velocidad = velocidad || 1.0;
+  // Default: grave y un poco lento = más arcade
+  tono = (tono === undefined) ? 0.2 : tono;
+  velocidad = velocidad || 0.85;
   try {
     if (typeof speechSynthesis === 'undefined') return;
-    // Cancelar cualquier utterance previa para que no se encimen
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = 'en-US';
     u.pitch = tono;
     u.rate = velocidad;
-    u.volume = 0.9;
-    // Intentar buscar una voz masculina si existe
+    u.volume = 1.0;
     const voces = speechSynthesis.getVoices();
     const vozGrave = voces.find(function(v) {
-      return v.lang.indexOf('en') === 0 && (v.name.indexOf('Male') !== -1 || v.name.indexOf('David') !== -1 || v.name.indexOf('Google UK English Male') !== -1);
+      return v.lang.indexOf('en') === 0 && (
+        v.name.indexOf('Google UK English Male') !== -1 ||
+        v.name.indexOf('Daniel') !== -1 ||
+        v.name.indexOf('Alex') !== -1 ||
+        v.name.indexOf('David') !== -1 ||
+        v.name.indexOf('Male') !== -1
+      );
     });
     if (vozGrave) u.voice = vozGrave;
     speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// Precalentar la voz al inicio para que la primera utterance no tarde
+function precalentarVoz() {
+  if (typeof speechSynthesis === 'undefined') return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    u.rate = 10;
+    speechSynthesis.speak(u);
+    setTimeout(function() { speechSynthesis.cancel(); }, 50);
   } catch (e) {}
 }
 
@@ -704,11 +721,11 @@ if (typeof speechSynthesis !== 'undefined') {
 
 // Sonidos cortos del announcer (sin voz, para combos rápidos)
 const ANNOUNCER_SFX = {
-  fight:   function() { anunciar('Fight!', 0.4, 1.3); },
-  ko:      function() { anunciar('K.O.!', 0.3, 0.9); },
-  perfect: function() { anunciar('Perfect!', 0.5, 1.1); },
-  combo:   function() { anunciar('Combo!', 0.5, 1.4); },
-  winner:  function() { anunciar('You win!', 0.4, 1.0); },
-  loser:   function() { anunciar('You lose', 0.4, 0.9); }
+  fight:   function() { anunciar('Fight!', 0.15, 0.95); },
+  ko:      function() { anunciar('Knock out!', 0.1, 0.85); },
+  perfect: function() { anunciar('Perfect!', 0.15, 0.9); },
+  combo:   function() { anunciar('Combo!', 0.15, 1.0); },
+  winner:  function() { anunciar('You win!', 0.15, 0.9); },
+  loser:   function() { anunciar('You lose', 0.15, 0.85); }
 };
 
