@@ -1,8 +1,8 @@
 // ============================================================
-//  SISTEMA DE AUDIO
-//  - SFX con capas
+//  SISTEMA DE AUDIO v2
+//  - SFX con capas + variación aleatoria
+//  - 3 pistas bien diferenciadas con variación por compás
 //  - Ambiente por escenario
-//  - Música sintetizada con 3 pistas
 //  - Tecla M para mute
 // ============================================================
 
@@ -17,6 +17,7 @@ let volumenMaestro = 0.7;
 let musicaActual = null;
 let musicaTimer = null;
 let ambientActual = null;
+let ambientTimer = null;
 
 // ------------------------------------------------------------
 //  INICIALIZACIÓN
@@ -31,7 +32,7 @@ function initAudio() {
     masterGain.connect(audioCtx.destination);
 
     musicGain = audioCtx.createGain();
-    musicGain.gain.value = 0.32;
+    musicGain.gain.value = 0.3;
     musicGain.connect(masterGain);
 
     sfxGain = audioCtx.createGain();
@@ -53,45 +54,26 @@ function toggleMute() {
 }
 
 // ------------------------------------------------------------
-//  BEEP BASE (para SFX)
+//  UTILIDADES DE SÍNTESIS
 // ------------------------------------------------------------
-function beep(f1, f2, dur, type, vol, gainNode) {
-  if (!audioCtx) return;
-  type = type || 'square';
-  vol = vol || 0.07;
-  gainNode = gainNode || sfxGain;
-  try {
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(f1, t);
-    o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g).connect(gainNode);
-    o.start(t);
-    o.stop(t + dur);
-  } catch (e) {}
-}
-
-// Ruido blanco (para impactos secos y crujidos)
-function ruidoBlanco(dur, vol, filtroFreq, gainNode) {
+function ruidoBlanco(dur, vol, filtroFreq, gainNode, filtroTipo) {
   if (!audioCtx) return;
   vol = vol || 0.1;
   filtroFreq = filtroFreq || 2000;
   gainNode = gainNode || sfxGain;
+  filtroTipo = filtroTipo || 'bandpass';
   try {
     const t = audioCtx.currentTime;
-    const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+    const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate * dur));
     const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     const src = audioCtx.createBufferSource();
     src.buffer = buffer;
     const filter = audioCtx.createBiquadFilter();
-    filter.type = 'bandpass';
+    filter.type = filtroTipo;
     filter.frequency.value = filtroFreq;
+    filter.Q.value = 1.2;
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
@@ -101,95 +83,179 @@ function ruidoBlanco(dur, vol, filtroFreq, gainNode) {
   } catch (e) {}
 }
 
+function tono(f1, f2, dur, type, vol, gainNode, attack) {
+  if (!audioCtx) return;
+  type = type || 'square';
+  vol = vol || 0.07;
+  gainNode = gainNode || sfxGain;
+  attack = attack || 0.005;
+  try {
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t);
+    if (f2 && f2 !== f1) {
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+    }
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(gainNode);
+    o.start(t);
+    o.stop(t + dur);
+  } catch (e) {}
+}
+
+// Aleatoriedad para que no suenen idénticos
+function rand(min, max) { return min + Math.random() * (max - min); }
+
 // ------------------------------------------------------------
-//  SFX MEJORADOS (con capas)
+//  SFX MEJORADOS v2 (con capas + variación)
 // ------------------------------------------------------------
 const SFX = {
-  // Golpes ligeros: tap + aire
+  // PUÑETAZO: crujido seco + golpe grave + aire cortado
   punch: function() {
-    beep(500, 220, 0.04, 'square', 0.06);
-    ruidoBlanco(0.05, 0.08, 2500);
+    const vol = rand(0.85, 1.15);
+    // Capa 1: click agudo (el contacto)
+    ruidoBlanco(0.02, 0.14 * vol, 3500, sfxGain, 'highpass');
+    // Capa 2: impacto grave (el peso)
+    tono(rand(220, 260), 90, 0.09, 'triangle', 0.12 * vol);
+    // Capa 3: aire cortado
+    ruidoBlanco(0.06, 0.08 * vol, 1800);
   },
-  // Patadas: impacto más grave + crujido
+
+  // PATADA: impacto más grave + aire largo
   kick: function() {
-    beep(340, 120, 0.07, 'sawtooth', 0.08);
-    beep(180, 90, 0.1, 'sine', 0.06);
-    ruidoBlanco(0.09, 0.09, 1200);
+    const vol = rand(0.85, 1.15);
+    // Capa 1: click
+    ruidoBlanco(0.025, 0.12 * vol, 2500, sfxGain, 'highpass');
+    // Capa 2: golpe grave potente
+    tono(rand(160, 200), 60, 0.14, 'triangle', 0.16 * vol);
+    tono(rand(80, 100), 40, 0.18, 'sine', 0.12 * vol);
+    // Capa 3: aire largo
+    ruidoBlanco(0.12, 0.07 * vol, 1200);
   },
-  // Uppercut: barrido ascendente
+
+  // UPPERCUT: barrido ascendente + impacto
   upper: function() {
-    beep(200, 600, 0.15, 'square', 0.1);
-    beep(120, 320, 0.18, 'sine', 0.08);
-    ruidoBlanco(0.08, 0.07, 3000);
+    const vol = rand(0.9, 1.1);
+    // Capa 1: sweep ascendente
+    tono(200, rand(600, 720), 0.16, 'square', 0.11 * vol);
+    tono(100, 300, 0.2, 'sine', 0.09 * vol);
+    // Capa 2: aire silbando
+    ruidoBlanco(0.14, 0.07 * vol, 3000);
+    // Capa 3: impacto al final
+    setTimeout(function() {
+      ruidoBlanco(0.04, 0.1, 1500);
+      tono(180, 70, 0.1, 'triangle', 0.1);
+    }, 120);
   },
-  // Impacto general: golpe pesado + crujido
+
+  // IMPACTO RECIBIDO: contundente, con peso
   hit: function() {
-    beep(220, 80, 0.12, 'square', 0.1);
-    beep(110, 50, 0.18, 'sine', 0.08);
-    ruidoBlanco(0.1, 0.12, 800);
+    const vol = rand(0.9, 1.1);
+    // Capa 1: golpe grave (impacto fuerte)
+    tono(rand(200, 240), 50, 0.15, 'square', 0.14 * vol);
+    tono(rand(100, 130), 30, 0.22, 'sine', 0.12 * vol);
+    // Capa 2: crujido
+    ruidoBlanco(0.08, 0.14 * vol, 900);
+    // Capa 3: golpe agudo (contacto)
+    ruidoBlanco(0.02, 0.1 * vol, 4000, sfxGain, 'highpass');
   },
-  // Bloqueo: metal + resonancia
+
+  // BLOQUEO: metálico + resonancia
   block: function() {
-    beep(1200, 700, 0.08, 'triangle', 0.08);
-    beep(2400, 1600, 0.05, 'triangle', 0.05);
-    ruidoBlanco(0.06, 0.06, 4000);
+    const vol = rand(0.9, 1.1);
+    // Capa 1: ting agudo
+    tono(rand(1100, 1300), rand(650, 750), 0.1, 'triangle', 0.1 * vol);
+    tono(rand(2200, 2600), rand(1400, 1700), 0.06, 'sine', 0.06 * vol);
+    // Capa 2: siseo del roce
+    ruidoBlanco(0.06, 0.08 * vol, 4500, sfxGain, 'highpass');
   },
-  // Especial: power chord ascendente + ruido
+
+  // ESPECIAL: power chord ascendente + distorsión
   special: function() {
-    beep(120, 900, 0.35, 'sawtooth', 0.13);
-    beep(240, 1800, 0.35, 'square', 0.08);
-    beep(60, 240, 0.45, 'sine', 0.1);
-    ruidoBlanco(0.2, 0.1, 1500);
+    // Capa 1: sweep grave a agudo
+    tono(100, 900, 0.4, 'sawtooth', 0.14);
+    tono(200, 1800, 0.4, 'square', 0.09);
+    tono(50, 220, 0.5, 'sine', 0.12);
+    // Capa 2: crujido eléctrico
+    ruidoBlanco(0.25, 0.1, 1800);
+    // Capa 3: impacto de cierre
+    setTimeout(function() {
+      ruidoBlanco(0.1, 0.14, 800);
+      tono(150, 50, 0.2, 'triangle', 0.12);
+    }, 380);
   },
-  // KO: caída dramática
+
+  // KO: caída lenta y dramática
   ko: function() {
-    beep(220, 60, 0.6, 'sawtooth', 0.14);
-    beep(110, 30, 0.9, 'sine', 0.12);
-    ruidoBlanco(0.4, 0.12, 500);
+    tono(260, 50, 0.7, 'sawtooth', 0.15);
+    tono(130, 30, 1.0, 'sine', 0.13);
+    ruidoBlanco(0.5, 0.12, 500);
+    // Coro descendente
+    setTimeout(function() { tono(400, 200, 0.5, 'triangle', 0.08); }, 200);
+    setTimeout(function() { tono(300, 150, 0.5, 'triangle', 0.07); }, 350);
   },
-  // Countdown beep
+
+  // BEEP DE CUENTA ATRÁS
   count: function() {
-    beep(660, 660, 0.1, 'sine', 0.09);
-    beep(1320, 1320, 0.06, 'sine', 0.04);
+    tono(660, 660, 0.12, 'sine', 0.1);
+    tono(1320, 1320, 0.08, 'sine', 0.05);
   },
-  // ¡PELEA!
+
+  // ¡PELEA! — Fanfarria corta
   fight: function() {
-    beep(330, 990, 0.3, 'square', 0.12);
-    beep(165, 495, 0.35, 'sawtooth', 0.1);
+    tono(330, 330, 0.12, 'square', 0.11);
+    setTimeout(function(){ tono(440, 440, 0.12, 'square', 0.11); }, 110);
+    setTimeout(function(){ tono(660, 990, 0.4, 'square', 0.13); }, 220);
+    tono(165, 330, 0.5, 'sawtooth', 0.09);
   },
-  // Salto: ligero y corto
+
+  // SALTO: corto y aireado
   jump: function() {
-    beep(700, 1100, 0.06, 'sine', 0.05);
+    tono(rand(700, 800), rand(1000, 1200), 0.07, 'sine', 0.06);
+    ruidoBlanco(0.05, 0.03, 4000, sfxGain, 'highpass');
   },
-  // Dash: whoosh
+
+  // DASH: whoosh
   dash: function() {
-    beep(500, 1400, 0.1, 'triangle', 0.06);
-    ruidoBlanco(0.1, 0.06, 3000);
+    tono(500, 1400, 0.11, 'triangle', 0.07);
+    ruidoBlanco(0.12, 0.09, 2200);
   },
-  // Mejora elegida: chime brillante
+
+  // MEJORA ELEGIDA: chime brillante
   upgrade: function() {
-    beep(660, 1320, 0.15, 'triangle', 0.1);
-    beep(880, 1760, 0.2, 'sine', 0.08);
-    beep(1320, 2640, 0.25, 'sine', 0.05);
+    tono(660, 1320, 0.16, 'triangle', 0.11);
+    tono(880, 1760, 0.22, 'sine', 0.09);
+    setTimeout(function(){ tono(1320, 2640, 0.28, 'sine', 0.06); }, 60);
   },
-  // Derrota
+
+  // DERROTA
   defeat: function() {
-    beep(330, 80, 0.7, 'sawtooth', 0.14);
-    beep(220, 50, 1.0, 'sine', 0.12);
-    ruidoBlanco(0.5, 0.08, 400);
+    tono(340, 80, 0.8, 'sawtooth', 0.15);
+    tono(220, 50, 1.1, 'sine', 0.13);
+    ruidoBlanco(0.5, 0.09, 400);
+    setTimeout(function(){ tono(200, 60, 0.6, 'triangle', 0.08); }, 400);
   },
-  // Victoria
+
+  // VICTORIA: arpegio ascendente
   victory: function() {
-    beep(523, 523, 0.15, 'square', 0.1);
-    setTimeout(function(){ beep(659, 659, 0.15, 'square', 0.1); }, 120);
-    setTimeout(function(){ beep(784, 784, 0.15, 'square', 0.1); }, 240);
-    setTimeout(function(){ beep(1047, 1047, 0.4, 'square', 0.12); }, 360);
+    tono(523, 523, 0.14, 'square', 0.1);
+    setTimeout(function(){ tono(659, 659, 0.14, 'square', 0.1); }, 130);
+    setTimeout(function(){ tono(784, 784, 0.14, 'square', 0.1); }, 260);
+    setTimeout(function(){ tono(1047, 1047, 0.5, 'square', 0.12); }, 390);
+    setTimeout(function(){ tono(1319, 1319, 0.5, 'sine', 0.09); }, 390);
   }
 };
 
 // ------------------------------------------------------------
-//  MÚSICA SINTETIZADA
+//  MÚSICA SINTETIZADA v2
+//  - 3 pistas bien distintas
+//  - Variación por compás (fills, acentos)
 // ------------------------------------------------------------
+
 function notaFreq(nota, octava) {
   const notas = { 'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13, 'E': 329.63,
                   'F': 349.23, 'F#': 369.99, 'G': 392.00, 'G#': 415.30, 'A': 440.00,
@@ -204,19 +270,18 @@ function tocarKick(when, vol) {
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   o.type = 'sine';
-  o.frequency.setValueAtTime(140, t);
-  o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(40, t + 0.14);
   g.gain.setValueAtTime(vol || 0.35, t);
-  g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
   o.connect(g).connect(musicGain);
   o.start(t);
-  o.stop(t + 0.2);
+  o.stop(t + 0.22);
 }
 
 function tocarSnare(when, vol) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime + when;
-  // Ruido
   const bufferSize = Math.floor(audioCtx.sampleRate * 0.15);
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
@@ -232,7 +297,6 @@ function tocarSnare(when, vol) {
   src.connect(filter).connect(g).connect(musicGain);
   src.start(t);
   src.stop(t + 0.15);
-  // Tono
   const o = audioCtx.createOscillator();
   const g2 = audioCtx.createGain();
   o.type = 'triangle';
@@ -266,13 +330,13 @@ function tocarHat(when, vol, abierto) {
   src.stop(t + dur);
 }
 
-function tocarBajo(freq, when, dur, vol) {
+function tocarBajo(freq, when, dur, vol, tipo) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime + when;
   const o = audioCtx.createOscillator();
   const o2 = audioCtx.createOscillator();
   const g = audioCtx.createGain();
-  o.type = 'triangle';
+  o.type = tipo || 'triangle';
   o2.type = 'sawtooth';
   o.frequency.value = freq;
   o2.frequency.value = freq / 2;
@@ -287,6 +351,21 @@ function tocarBajo(freq, when, dur, vol) {
   o2.stop(t + dur);
 }
 
+function tocarLead(freq, when, dur, vol, tipo) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + when;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = tipo || 'square';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.linearRampToValueAtTime(vol || 0.05, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(musicGain);
+  o.start(t);
+  o.stop(t + dur);
+}
+
 function tocarPad(freq, when, dur, vol) {
   if (!audioCtx) return;
   const t = audioCtx.currentTime + when;
@@ -296,12 +375,12 @@ function tocarPad(freq, when, dur, vol) {
   o.type = 'sawtooth';
   o2.type = 'sawtooth';
   o.frequency.value = freq;
-  o2.frequency.value = freq * 1.005; // detune sutil
+  o2.frequency.value = freq * 1.005;
   const filter = audioCtx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.value = 1200;
   g.gain.setValueAtTime(0.001, t);
-  g.gain.linearRampToValueAtTime(vol || 0.05, t + 0.15);
+  g.gain.linearRampToValueAtTime(vol || 0.05, t + 0.2);
   g.gain.linearRampToValueAtTime(0.001, t + dur);
   o.connect(filter);
   o2.connect(filter);
@@ -313,101 +392,189 @@ function tocarPad(freq, when, dur, vol) {
 }
 
 // ------------------------------------------------------------
-//  PISTAS
+//  3 PISTAS DISTINTAS CON VARIACIÓN
 // ------------------------------------------------------------
-// Cada pista es una función que toca un compás y programa el siguiente
 const PISTAS = {
+  // ---- MENÚ: lento, jazzy, hip-hop suave con piano ----
   menu: function(compas) {
-    // Loop lento y chill, hip-hop suave
-    const tempo = 90;
+    const tempo = 84;
     const beatMs = 60000 / tempo;
-    // Batería suave
-    tocarKick(0, 0.28);
-    tocarKick(beatMs * 0.5 / 1000, 0.18);
-    tocarKick(beatMs * 2 / 1000, 0.28);
-    tocarSnare(beatMs * 1 / 1000, 0.14);
-    tocarSnare(beatMs * 3 / 1000, 0.14);
+    const beat = beatMs / 1000;
+    const variacion = compas % 8;
+
+    // Drums: patrón hip-hop clásico
+    tocarKick(0, 0.32);
+    tocarKick(beat * 2, 0.32);
+    tocarKick(beat * 2.75, 0.22);
+    tocarSnare(beat * 1, 0.16);
+    tocarSnare(beat * 3, 0.16);
+
+    // Hats con swing
     for (let i = 0; i < 8; i++) {
-      tocarHat(i * beatMs / 2 / 1000, 0.04, i % 4 === 3);
+      const swing = (i % 2 === 1) ? 0.06 : 0;
+      tocarHat(i * beat / 2 + swing, 0.045, i === 7);
     }
-    // Bajo
+
+    // Fill cada 4 compases
+    if (variacion === 3 || variacion === 7) {
+      tocarSnare(beat * 3.5, 0.2);
+      tocarSnare(beat * 3.75, 0.22);
+    }
+
+    // Progresión jazz
     const prog = [
-      [notaFreq('A', 2), notaFreq('C', 3), notaFreq('E', 3)],
-      [notaFreq('F', 2), notaFreq('A', 2), notaFreq('C', 3)],
-      [notaFreq('G', 2), notaFreq('B', 2), notaFreq('D', 3)],
-      [notaFreq('E', 2), notaFreq('G', 2), notaFreq('B', 2)]
+      [notaFreq('A', 2), notaFreq('C', 3), notaFreq('E', 3), notaFreq('G', 3)],
+      [notaFreq('F', 2), notaFreq('A', 2), notaFreq('C', 3), notaFreq('E', 3)],
+      [notaFreq('D', 2), notaFreq('F', 2), notaFreq('A', 2), notaFreq('C', 3)],
+      [notaFreq('E', 2), notaFreq('G', 2), notaFreq('B', 2), notaFreq('D', 3)]
     ];
     const acorde = prog[compas % 4];
-    tocarBajo(acorde[0], 0, 1.2, 0.16);
-    tocarBajo(acorde[1], beatMs * 2 / 1000, 0.8, 0.13);
+
+    // Bajo caminando
+    tocarBajo(acorde[0], 0, 1.0, 0.17);
+    tocarBajo(acorde[1], beat * 2, 0.8, 0.14);
+    if (variacion % 2 === 1) {
+      tocarBajo(acorde[2], beat * 3, 0.5, 0.12);
+    }
+
+    // Lead melódico suave (notas del acorde)
+    tocarLead(acorde[2], 0, 1.8, 0.04, 'triangle');
+    tocarLead(acorde[3], beat * 2, 1.6, 0.035, 'triangle');
+    if (variacion === 2 || variacion === 6) {
+      tocarLead(acorde[3] * 2, beat * 3, 0.6, 0.03, 'sine');
+    }
+
     // Pad atmosférico
-    tocarPad(acorde[0] * 2, 0, 2.4, 0.04);
-    tocarPad(acorde[2], 0, 2.4, 0.035);
+    tocarPad(acorde[0] * 2, 0, 2.8, 0.035);
+    tocarPad(acorde[2], 0, 2.8, 0.03);
 
     return beatMs * 4;
   },
 
+  // ---- COMBATE: funk-rock con groove marcado ----
   combat: function(compas) {
-    // Ritmo marcado, hip-hop-rock
-    const tempo = 128;
+    const tempo = 138;
     const beatMs = 60000 / tempo;
-    // Drums
-    tocarKick(0, 0.4);
-    tocarKick(beatMs * 1.5 / 1000, 0.3);
-    tocarKick(beatMs * 2.5 / 1000, 0.4);
-    tocarSnare(beatMs * 1 / 1000, 0.22);
-    tocarSnare(beatMs * 3 / 1000, 0.22);
-    tocarHat(beatMs * 0.5 / 1000, 0.07, false);
-    tocarHat(beatMs * 1.5 / 1000, 0.07, false);
-    tocarHat(beatMs * 2.5 / 1000, 0.07, false);
-    tocarHat(beatMs * 3.5 / 1000, 0.07, true);
-    // Bajo línea con groove
+    const beat = beatMs / 1000;
+    const variacion = compas % 8;
+
+    // Batería funky
+    tocarKick(0, 0.42);
+    tocarKick(beat * 0.75, 0.28);
+    tocarKick(beat * 2, 0.42);
+    tocarKick(beat * 2.5, 0.32);
+    tocarKick(beat * 3.75, 0.28);
+    tocarSnare(beat * 1, 0.24);
+    tocarSnare(beat * 3, 0.24);
+    // Snare fantasma
+    if (variacion % 2 === 1) {
+      tocarSnare(beat * 2.5, 0.14);
+    }
+    // Hats rápidos con acento
+    for (let i = 0; i < 8; i++) {
+      tocarHat(i * beat / 2, i % 4 === 0 ? 0.08 : 0.05, i === 7 && variacion % 2 === 1);
+    }
+
+    // Fill de batería cada 4 compases
+    if (variacion === 3 || variacion === 7) {
+      tocarSnare(beat * 3.25, 0.22);
+      tocarSnare(beat * 3.5, 0.24);
+      tocarSnare(beat * 3.75, 0.26);
+    }
+
+    // Progresión menor
     const prog = [
-      [notaFreq('E', 2), notaFreq('E', 2), notaFreq('G', 2), notaFreq('B', 2)],
-      [notaFreq('C', 2), notaFreq('C', 2), notaFreq('E', 2), notaFreq('G', 2)],
-      [notaFreq('D', 2), notaFreq('D', 2), notaFreq('F#', 2), notaFreq('A', 2)],
-      [notaFreq('B', 1), notaFreq('B', 1), notaFreq('D', 2), notaFreq('F#', 2)]
+      [notaFreq('E', 2), notaFreq('G', 2), notaFreq('B', 2)],
+      [notaFreq('C', 2), notaFreq('E', 2), notaFreq('G', 2)],
+      [notaFreq('G', 2), notaFreq('B', 2), notaFreq('D', 3)],
+      [notaFreq('D', 2), notaFreq('F#', 2), notaFreq('A', 2)]
     ];
     const acorde = prog[compas % 4];
-    tocarBajo(acorde[0], 0, 0.3, 0.2);
-    tocarBajo(acorde[1], beatMs * 1 / 1000, 0.25, 0.18);
-    tocarBajo(acorde[2], beatMs * 2 / 1000, 0.3, 0.2);
-    tocarBajo(acorde[3], beatMs * 3 / 1000, 0.35, 0.22);
-    // Pad sutil
-    tocarPad(acorde[0] * 4, 0, 2.2, 0.03);
+
+    // Línea de bajo funky (síncopas)
+    tocarBajo(acorde[0], 0, 0.25, 0.2);
+    tocarBajo(acorde[0], beat * 0.75, 0.15, 0.16);
+    tocarBajo(acorde[1], beat * 1.5, 0.2, 0.18);
+    tocarBajo(acorde[0], beat * 2, 0.22, 0.2);
+    tocarBajo(acorde[2], beat * 3, 0.3, 0.19);
+    if (variacion % 2 === 0) {
+      tocarBajo(acorde[0] * 2, beat * 3.5, 0.15, 0.15);
+    }
+
+    // Lead riff
+    const riff = [acorde[2], acorde[1], acorde[2] * 1.5, acorde[2]];
+    for (let i = 0; i < 4; i++) {
+      tocarLead(riff[i], i * beat, 0.2, 0.05, 'square');
+    }
+
+    // Pad rockero
+    tocarPad(acorde[0] * 4, 0, 2.4, 0.03);
+    tocarPad(acorde[1] * 2, 0, 2.4, 0.025);
+
     return beatMs * 4;
   },
 
+  // ---- BOSS: metal industrial agresivo ----
   boss: function(compas) {
-    // Más agresivo, power chords distorsionados
-    const tempo = 145;
+    const tempo = 155;
     const beatMs = 60000 / tempo;
-    // Drums más intensos
-    tocarKick(0, 0.45);
-    tocarKick(beatMs * 0.5 / 1000, 0.35);
-    tocarKick(beatMs * 2 / 1000, 0.45);
-    tocarKick(beatMs * 2.5 / 1000, 0.35);
-    tocarSnare(beatMs * 1 / 1000, 0.28);
-    tocarSnare(beatMs * 3 / 1000, 0.28);
-    for (let i = 0; i < 8; i++) {
-      tocarHat(i * beatMs / 2 / 1000, 0.06, i === 7);
+    const beat = beatMs / 1000;
+    const variacion = compas % 8;
+
+    // Doble bombo industrial
+    tocarKick(0, 0.5);
+    tocarKick(beat * 0.25, 0.32);
+    tocarKick(beat * 0.5, 0.42);
+    tocarKick(beat * 1, 0.5);
+    tocarKick(beat * 1.5, 0.42);
+    tocarKick(beat * 2, 0.5);
+    tocarKick(beat * 2.25, 0.32);
+    tocarKick(beat * 2.5, 0.42);
+    tocarKick(beat * 3, 0.5);
+    // Snare contundente
+    tocarSnare(beat * 1, 0.3);
+    tocarSnare(beat * 3, 0.3);
+    // Fill explosivo cada 4
+    if (variacion === 3 || variacion === 7) {
+      tocarSnare(beat * 3.25, 0.28);
+      tocarSnare(beat * 3.5, 0.3);
+      tocarSnare(beat * 3.75, 0.32);
+      tocarKick(beat * 3.9, 0.4);
     }
-    // Power chords (bajo + quinta)
+    // Hats rígidos
+    for (let i = 0; i < 8; i++) {
+      tocarHat(i * beat / 2, 0.06, false);
+    }
+
+    // Power chords en 8vos
     const prog = [
       [notaFreq('E', 2), notaFreq('B', 2)],
       [notaFreq('E', 2), notaFreq('B', 2)],
-      [notaFreq('C', 2), notaFreq('G', 2)],
-      [notaFreq('D', 2), notaFreq('A', 2)]
+      [notaFreq('G', 2), notaFreq('D', 3)],
+      [notaFreq('A', 2), notaFreq('E', 3)]
     ];
     const acorde = prog[compas % 4];
-    // Power chord distorsionado en negras
-    for (let i = 0; i < 4; i++) {
-      const when = i * beatMs / 1000;
-      tocarBajo(acorde[0], when, 0.22, 0.16);
-      tocarBajo(acorde[1], when, 0.22, 0.12);
+
+    // Power chord golpeado en corcheas
+    for (let i = 0; i < 8; i++) {
+      const v = (i % 2 === 0) ? 0.16 : 0.11;
+      tocarBajo(acorde[0], i * beat / 2, 0.2, v, 'sawtooth');
+      tocarBajo(acorde[1], i * beat / 2, 0.2, v * 0.7, 'sawtooth');
     }
-    // Pad agresivo
-    tocarPad(acorde[0] * 4, 0, 2.0, 0.04);
+
+    // Lead agresivo
+    if (variacion % 2 === 0) {
+      tocarLead(acorde[1] * 2, 0, 0.3, 0.06, 'sawtooth');
+      tocarLead(acorde[0] * 2, beat * 2, 0.5, 0.06, 'sawtooth');
+    } else {
+      tocarLead(acorde[1] * 2, beat * 1.5, 0.2, 0.05, 'sawtooth');
+      tocarLead(acorde[1] * 2, beat * 2.5, 0.2, 0.05, 'sawtooth');
+    }
+
+    // Pad industrial
+    tocarPad(acorde[0] * 2, 0, 2.2, 0.05);
+    tocarPad(acorde[1], 0, 2.2, 0.04);
+
     return beatMs * 4;
   }
 };
@@ -417,10 +584,18 @@ const PISTAS = {
 // ------------------------------------------------------------
 function playMusic(pista) {
   if (!audioCtx) return;
+  if (musicaActual === pista) return;
   stopMusic();
   if (!PISTAS[pista]) return;
   musicaActual = pista;
   let compas = 0;
+
+  // Fade in
+  if (musicGain) {
+    musicGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    musicGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    musicGain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.8);
+  }
 
   const tocarSiguiente = function() {
     if (!audioCtx || musicaActual !== pista) return;
@@ -444,38 +619,39 @@ function stopMusic() {
 // ------------------------------------------------------------
 function playAmbient(escenario) {
   if (!audioCtx) return;
+  if (ambientActual === escenario) return;
   stopAmbient();
   ambientActual = escenario;
 
   if (escenario === 'noche') {
-    // Viento suave
-    const interval = setInterval(function() {
+    ambientTimer = setInterval(function() {
       if (!audioCtx || ambientActual !== 'noche') return;
-      ruidoBlanco(0.8, 0.04, 800, ambientGain);
-    }, 2000);
-    ambientTimer = interval;
+      ruidoBlanco(0.8, 0.04, 800, ambientGain, 'lowpass');
+      if (Math.random() < 0.2) {
+        tono(300, 200, 0.4, 'sine', 0.02, ambientGain);
+      }
+    }, 2200);
   } else if (escenario === 'tormenta') {
-    // Lluvia + truenos ocasionales
-    const interval = setInterval(function() {
+    ambientTimer = setInterval(function() {
       if (!audioCtx || ambientActual !== 'tormenta') return;
-      ruidoBlanco(0.5, 0.05, 3000, ambientGain);
-      if (Math.random() < 0.15) {
-        beep(80, 30, 0.6, 'sawtooth', 0.08, ambientGain);
+      ruidoBlanco(0.5, 0.05, 3000, ambientGain, 'lowpass');
+      if (Math.random() < 0.18) {
+        tono(80, 30, 0.7, 'sawtooth', 0.09, ambientGain);
+        ruidoBlanco(0.4, 0.08, 600, ambientGain, 'lowpass');
       }
     }, 900);
-    ambientTimer = interval;
   } else if (escenario === 'volcan') {
-    // Lava burbujeante + retumbo
-    const interval = setInterval(function() {
+    ambientTimer = setInterval(function() {
       if (!audioCtx || ambientActual !== 'volcan') return;
-      beep(60, 40, 0.8, 'sine', 0.06, ambientGain);
-      ruidoBlanco(0.3, 0.03, 400, ambientGain);
+      tono(60, 40, 0.9, 'sine', 0.06, ambientGain);
+      ruidoBlanco(0.3, 0.04, 400, ambientGain, 'lowpass');
+      if (Math.random() < 0.3) {
+        tono(rand(200, 400), rand(80, 150), 0.15, 'triangle', 0.03, ambientGain);
+      }
     }, 1400);
-    ambientTimer = interval;
   }
 }
 
-let ambientTimer = null;
 function stopAmbient() {
   if (ambientTimer) {
     clearInterval(ambientTimer);
@@ -489,7 +665,7 @@ function stopAmbient() {
 // ------------------------------------------------------------
 document.addEventListener('keydown', function(e) {
   if (e.key.toLowerCase() === 'm') {
-    const muted = toggleMute();
-    console.log('Audio ' + (muted ? 'silenciado' : 'activado'));
+    const m = toggleMute();
+    console.log('Audio ' + (m ? 'silenciado' : 'activado'));
   }
 });
