@@ -30,6 +30,8 @@ class Fighter {
     // NUEVOS: bonuses con lógica
     this.bonuses = def.__bonuses || bonusesVacios();
     this.regenAccum = 0;
+    this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
+    this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
     this.sangradoAcum = 0;
@@ -60,6 +62,8 @@ class Fighter {
     this.healAccum = 0; this.hitCount = 0; this.doubleJumpUsed = false;
     this.dashTimer = 0; this.dashDir = 0;
     this.regenAccum = 0;
+    this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
+    this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
     this.sangradoAcum = 0;
@@ -142,12 +146,13 @@ class Fighter {
     // NUEVO: clon del especial (mejora Épica de Shadow)
     if (this.bonuses && this.bonuses.clonEspecial && oponente) {
       this.clonTimer = 40;
-      this.clonX = this.x - this.facing * 60;
+      this.clonesActivos = this.bonuses.clonEspecial;
       spawnParticles(this.clonX, this.y - 50, 20, this.color, 10);
     }
     // NUEVO: congelar al especial (mejora Épica de Frost)
     if (this.bonuses && this.bonuses.congelarEspecial && oponente) {
-      oponente.slowTimer = Math.max(oponente.slowTimer, 120);
+      const dur = 120 + (this.bonuses.congelarEspecial - 1) * 120;
+      oponente.slowTimer = Math.max(oponente.slowTimer, dur)
     }
     return true;
   }
@@ -189,11 +194,19 @@ class Fighter {
     // NUEVO: clon (mejora épica de Shadow)
     if (this.clonTimer > 0) {
       this.clonTimer--;
-      // El clon golpea al rival a mitad de su vida
       if (this.clonTimer === 20 && oponente) {
-        oponente.recibirDaño(12, this, 'clon');
-        spawnParticles(oponente.x, oponente.y - 50, 15, this.color, 8);
-        spawnRing(oponente.x, oponente.y - 50, this.accent, 80);
+        const numClones = this.clonesActivos || 1;
+        for (let ci = 0; ci < numClones; ci++) {
+          setTimeout((function(self, o){
+            return function(){
+              if (o && o.salud > 0) {
+                o.recibirDaño(10, self, 'clon');
+                spawnParticles(o.x, o.y - 50, 15, self.color, 8);
+                spawnRing(o.x, o.y - 50, self.accent, 80);
+              }
+            };
+          })(this, oponente), ci * 150);
+        }
       }
     }
 
@@ -217,9 +230,10 @@ class Fighter {
           if (now - this.lastATap < 260) {
             this.dashDir = -1;
             this.dashTimer = 12;
-            if (this.bonuses && this.bonuses.dashInvuln) {
-              const extra = (this.bonuses.dashInvulnExtra || 0);
+            if (this.bonuses && this.bonuses.dashInvuln > 0) {
+              const extra = (this.bonuses.dashInvuln - 1) * 8 + (this.bonuses.dashInvulnExtra || 0);
               this.invulnerable = Math.max(this.invulnerable, 10 + extra);
+            }
             }
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
@@ -231,8 +245,8 @@ class Fighter {
           if (now - this.lastDTap < 260) {
             this.dashDir = 1;
             this.dashTimer = 12;
-            if (this.bonuses && this.bonuses.dashInvuln) {
-              const extra = (this.bonuses.dashInvulnExtra || 0);
+           if (this.bonuses && this.bonuses.dashInvuln > 0) {
+              const extra = (this.bonuses.dashInvuln - 1) * 8 + (this.bonuses.dashInvulnExtra || 0);
               this.invulnerable = Math.max(this.invulnerable, 10 + extra);
             }
             SFX.dash();
@@ -435,8 +449,11 @@ class Fighter {
       }
     }
     // NUEVO: crítico garantizado en combos altos
-    if (this.bonuses && this.bonuses.critGarantizadoCombo && this.combo >= 4) {
-      if (!esCritico) { daño *= 2; esCritico = true; }
+       if (this.bonuses && this.bonuses.critGarantizadoCombo > 0) {
+      const umbral = Math.max(2, 6 - this.bonuses.critGarantizadoCombo);
+      if (this.combo >= umbral && !esCritico) {
+        daño *= 2; esCritico = true;
+      }
     }
 
     // Bloqueo
@@ -489,9 +506,11 @@ class Fighter {
     // Super armor (frames)
     const hasArmor = oponente.superArmorFrames > 0;
     // NUEVO: super armor leve (Titan rara) - solo interrumpen ataques fuertes
-    const esAtaqueFuerte = dmgFinal >= 8 || mv.special || mv.launch;
-    const hasSuperArmorLeve = oponente.bonuses && oponente.bonuses.superArmorLeve && !esAtaqueFuerte;
-
+    const umbralArmor = (oponente.bonuses && oponente.bonuses.superArmorLeve > 0)
+      ? (8 + (oponente.bonuses.superArmorLeve - 1) * 3)
+      : 8;
+    const esAtaqueFuerte = dmgFinal >= umbralArmor || mv.special || mv.launch;
+    const hasSuperArmorLeve = oponente.bonuses && oponente.bonuses.superArmorLeve > 0 && !esAtaqueFuerte;
     if (!hasArmor && !hasSuperArmorLeve) {
       oponente.invulnerable = 16;
       oponente.hitFlash = 10;
@@ -588,8 +607,11 @@ class Fighter {
     }
 
     // NUEVO: super armor leve (los ataques débiles no interrumpen)
-    const esAtaqueFuerte = dañoFinal >= 8;
-    const tieneSuperArmorLeve = this.bonuses && this.bonuses.superArmorLeve && !esAtaqueFuerte;
+       const umbralArmor = (this.bonuses && this.bonuses.superArmorLeve > 0)
+      ? (8 + (this.bonuses.superArmorLeve - 1) * 3)
+      : 8;
+    const esAtaqueFuerte = dañoFinal >= umbralArmor;
+    const tieneSuperArmorLeve = this.bonuses && this.bonuses.superArmorLeve > 0 && !esAtaqueFuerte;
 
     this.salud -= dañoFinal;
     if (this.salud < 0) this.salud = 0;
@@ -716,22 +738,25 @@ class Fighter {
 
   dibujar(t) {
     // Clon (mejora épica de Shadow)
-    if (this.clonTimer > 0) {
-      ctx.save();
-      ctx.globalAlpha = this.clonTimer / 40 * 0.6;
-      ctx.translate(this.clonX, this.y);
-      ctx.scale(this.facing, 1);
-      ctx.shadowColor = this.accent;
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = this.color;
-      // Silueta simple
-      ctx.beginPath(); ctx.arc(0, -78, 11, 0, Math.PI*2); ctx.fill();
-      ctx.fillRect(-3, -68, 6, 38);
-      ctx.fillRect(-15, -60, 12, 5);
-      ctx.fillRect(3, -60, 12, 5);
-      ctx.fillRect(-12, -30, 8, 30);
-      ctx.fillRect(4, -30, 8, 30);
-      ctx.restore();
+       if (this.clonTimer > 0) {
+      const numClones = this.clonesActivos || 1;
+      for (let ci = 0; ci < numClones; ci++) {
+        const offsetX = (ci + 1) * 35 * -this.facing;
+        ctx.save();
+        ctx.globalAlpha = this.clonTimer / 40 * 0.6;
+        ctx.translate(this.x + offsetX, this.y);
+        ctx.scale(this.facing, 1);
+        ctx.shadowColor = this.accent;
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(0, -78, 11, 0, Math.PI*2); ctx.fill();
+        ctx.fillRect(-3, -68, 6, 38);
+        ctx.fillRect(-15, -60, 12, 5);
+        ctx.fillRect(3, -60, 12, 5);
+        ctx.fillRect(-12, -30, 8, 30);
+        ctx.fillRect(4, -30, 8, 30);
+        ctx.restore();
+      }
     }
 
     ctx.save();
