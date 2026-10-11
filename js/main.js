@@ -18,6 +18,7 @@ let pausado = false;
 let escenarioActual = 0;
 let comboTopeEstaPartida = 0;
 let modoActual = 'rapido';
+let bossWarningTimer = 0;
 let impactFrameTimer = 0;
 let koZoom = 1;
 let koZoomTarget = 1;
@@ -407,8 +408,12 @@ function update() {
   if (estadoJuego === 'evento') return;
 
   if (estadoJuego === 'boss_warning') {
-    window.__bossWarningTimer--;
-    if (window.__bossWarningTimer <= 0) {
+    // Fallback por si el timer se perdió
+    if (typeof bossWarningTimer !== 'number' || isNaN(bossWarningTimer)) {
+      bossWarningTimer = 90;
+    }
+    bossWarningTimer--;
+    if (bossWarningTimer <= 0) {
       ocultarAvisoBoss();
       estadoJuego = 'countdown';
       countdownTimer = 180;
