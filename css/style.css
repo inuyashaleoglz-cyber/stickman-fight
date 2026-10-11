@@ -192,14 +192,20 @@ canvas { display: block; width: 100%; height: 100%; background: #0a0518; }
 }
 
 .overlay-stats {
-  color: #fff; font-size: 15px; text-align: center;
-  line-height: 1.8;
+  color: #fff; font-size: 14px; text-align: center;
+  line-height: 1.6;
   padding: 12px 20px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 10px;
   min-width: 260px;
+  max-width: 90vw;
+  max-height: 45vh;
+  overflow-y: auto;
 }
+.overlay-stats::-webkit-scrollbar { width: 6px; }
+.overlay-stats::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+
 .overlay-stats b { color: #fbbf24; }
 
 .overlay-btn {
@@ -670,3 +676,25 @@ canvas { display: block; width: 100%; height: 100%; background: #0a0518; }
 }
 .tienda-card.vendido .precio { color: #4ade80; }
 .tienda-card.sin-oro .precio { color: #f87171; }
+/* Grid de mejoras en el resumen de derrota */
+.mejoras-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px 8px;
+  margin-top: 6px;
+  text-align: left;
+  font-size: 11px;
+}
+.mejoras-resumen span {
+  color: #ddd;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mejoras-resumen .count {
+  color: #4ade80;
+  font-weight: 800;
+}
