@@ -988,6 +988,13 @@ function volverAlMenu() {
   if (typeof playMusic === 'function') playMusic('menu');
   if (typeof stopAmbient === 'function') stopAmbient();
   bossWarningTimer = 0;
+  window.__avisoStartTime = null;
+  if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
+  vsScreenYaMostrado = false;
+  const overlayVS = document.getElementById('vsScreenOverlay');
+  if (overlayVS) overlayVS.classList.remove('active');
+  const overlayCombo = document.getElementById('comboCallOverlay');
+  if (overlayCombo) overlayCombo.classList.remove('active');
     window.__avisoStartTime = null;
   if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
   document.getElementById('gameScreen').classList.remove('active');
