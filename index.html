@@ -69,6 +69,27 @@
       <div class="descanso-sub">Recupera fuerzas antes del siguiente combate</div>
       <div class="descanso-grid" id="descansoGrid"></div>
     </div>
+    <!-- Overlay: CONQUISTA (cada 30 pisos) -->
+    <div id="conquistaOverlay" class="overlay conquista-overlay">
+      <div class="conquista-icon">🏆</div>
+      <div class="conquista-title">¡CONQUISTA!</div>
+      <div class="conquista-sub" id="conquistaSub">Has superado 30 pisos</div>
+      <div class="conquista-stats" id="conquistaStats"></div>
+      <div class="conquista-buttons">
+        <button class="overlay-btn" id="conquistaContinuarBtn" style="background:linear-gradient(135deg,#fbbf24,#f59e0b)">CONTINUAR ▶</button>
+        <button class="overlay-btn" id="conquistaRetirarseBtn" style="background:linear-gradient(135deg,#4ade80,#22c55e)">RETIRARSE Y GUARDAR</button>
+      </div>
+    </div>
+
+    <!-- Overlay: TIENDA -->
+    <div id="tiendaOverlay" class="overlay tienda-overlay">
+      <div class="tienda-header">
+        <div class="tienda-title">💰 TIENDA</div>
+        <div class="tienda-oro">Oro: <span id="tiendaOroActual">0</span></div>
+      </div>
+      <div class="tienda-grid" id="tiendaGrid"></div>
+      <button class="overlay-btn" id="tiendaSalirBtn">SALIR ▶</button>
+    </div>
 
     <!-- Overlay: BUILD del jugador (TAB) -->
     <div id="buildOverlay" class="overlay build-overlay">
