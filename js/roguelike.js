@@ -7,7 +7,7 @@ let run = null;
 //  HELPERS DE PISO
 // ============================================================
 function factorPiso(piso) {
-  return 1 + (piso - 1) * 0.025;
+  return 1 + (piso - 1) * 0.035;
 }
 
 function dificultadDelPiso(piso) {
@@ -18,13 +18,18 @@ function dificultadDelPiso(piso) {
 }
 
 // ============================================================
-//  ELECCIÓN DE MEJORAS
+//  ELECCIÓN DE MEJORAS (con maxStack)
 // ============================================================
 function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
   const personajeActual = run ? run.personajeId : null;
   const disponibles = MEJORAS.filter(function(m) {
-    if (!m.soloPara) return true;
-    return m.soloPara === personajeActual;
+    if (m.soloPara && m.soloPara !== personajeActual) return false;
+    if (run) {
+      const maxStack = m.maxStack || 3;
+      const tomadas = run.mejorasTomadas.filter(function(x){ return x === m.id; }).length;
+      if (tomadas >= maxStack) return false;
+    }
+    return true;
   }).filter(function(m) { return m.rarity === rarezaForzada; });
 
   if (disponibles.length < cantidad) {
@@ -46,8 +51,13 @@ function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
 function elegirMejorasAleatorias(cantidad) {
   const personajeActual = run ? run.personajeId : null;
   const disponibles = MEJORAS.filter(function(m) {
-    if (!m.soloPara) return true;
-    return m.soloPara === personajeActual;
+    if (m.soloPara && m.soloPara !== personajeActual) return false;
+    if (run) {
+      const maxStack = m.maxStack || 3;
+      const tomadas = run.mejorasTomadas.filter(function(x){ return x === m.id; }).length;
+      if (tomadas >= maxStack) return false;
+    }
+    return true;
   });
 
   const porRareza = { comun: [], rara: [], epica: [] };
@@ -123,7 +133,7 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
-    const factor = 1 + (piso - 1) * 0.05;
+    const factor = factorPiso(piso);
     def.maxHealth = Math.round(def.maxHealth * factor * 1.30);
     def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
     def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
@@ -145,8 +155,8 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
     def.maxHealth = Math.round(def.maxHealth * factor);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.03);
-    def.speed = def.speed * (1 + (piso - 1) * 0.01);
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025);
+    def.speed = def.speed * (1 + (piso - 1) * 0.008);
     def.__esBoss = false; def.__esBossFinal = false; def.__esElite = false;
   }
 
@@ -229,6 +239,8 @@ function roguelikeEmpezarPiso() {
   if (run.bonuses.medidorInicial > 0) {
     jugador.meter = Math.min(100, run.bonuses.medidorInicial * 100);
   }
+  // Inicializar revivires
+  jugador.reviviresRestantes = run.bonuses.revivir || 0;
 
   victoriasJugador = 0;
   victoriasIA = 0;
@@ -274,7 +286,7 @@ function roguelikeEmpezarPiso() {
 }
 
 // ============================================================
-//  AVISO DE BOSS / ELITE
+//  AVISOS
 // ============================================================
 function mostrarAvisoBoss(rivalDef) {
   const overlay = document.getElementById('bossWarningOverlay');
@@ -331,20 +343,17 @@ function roguelikeAlTerminarPiso(ganador) {
 
   run.rivalesVencidos.push(run.piso);
 
-  // Oro por victoria
   let oroGanado = 10 + run.piso * 2;
   if (run.esElitePiso) oroGanado += 30;
   if (run.esBossPiso) oroGanado += 60;
   run.oro += oroGanado;
 
-  // Vida para siguiente piso
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
   const recuperacion = Math.round(vidaMax * 0.30);
   const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
   run.__vidaAlEntrar = vidaSiguiente;
 
-  // ¿Era piso de conquista?
   const esConquista = (run.piso % 30 === 0);
   if (esConquista) {
     run.conquistasRealizadas++;
@@ -437,11 +446,15 @@ function mostrarPantallaMejoras(opciones, textoCustom) {
   opciones.forEach(function(m) {
     const card = document.createElement('div');
     card.className = 'upgrade-card';
+    // Contador de stacks actuales
+    const stacksActuales = run.mejorasTomadas.filter(function(x){ return x === m.id; }).length;
+    const maxStack = m.maxStack || 3;
     card.innerHTML =
       '<span class="rarity ' + m.rarity + '">' + m.rarity + '</span>' +
       '<span class="icon">' + m.icon + '</span>' +
       '<div class="name">' + m.name + '</div>' +
-      '<div class="desc">' + m.desc + '</div>';
+      '<div class="desc">' + m.desc + '</div>' +
+      '<div style="font-size:10px;color:#fbbf24;margin-top:6px">Stack ' + (stacksActuales + 1) + '/' + maxStack + '</div>';
     card.addEventListener('click', function() {
       SFX.upgrade();
       roguelikeElegirMejora(m);
@@ -483,7 +496,8 @@ function mostrarGameOverRoguelike() {
   run.mejorasTomadas.forEach(function(id) {
     resumen[id] = (resumen[id] || 0) + 1;
   });
-   let listaMejoras = '<div class="mejoras-resumen">';
+
+  let listaMejoras = '<div class="mejoras-resumen">';
   const idsOrdenados = Object.keys(resumen).sort(function(a,b) {
     const ma = MEJORAS.find(function(x){ return x.id === a; });
     const mb = MEJORAS.find(function(x){ return x.id === b; });
@@ -504,7 +518,7 @@ function mostrarGameOverRoguelike() {
   const records = cargarRecords();
   const esRecord = run.piso >= records.mejorPisoRoguelike;
 
-    stats.innerHTML =
+  stats.innerHTML =
     'Piso alcanzado: <b>' + run.piso + '</b><br>' +
     'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
     'Oro acumulado: <b>' + run.oro + '</b><br>' +
@@ -516,7 +530,7 @@ function mostrarGameOverRoguelike() {
 }
 
 // ============================================================
-//  UI: VICTORIA (retirada o conquista final)
+//  UI: VICTORIA
 // ============================================================
 function mostrarVictoriaRoguelike() {
   SFX.victory();
@@ -536,7 +550,7 @@ function mostrarVictoriaRoguelike() {
 }
 
 // ============================================================
-//  EVENTOS (descanso / tesoro)
+//  EVENTOS
 // ============================================================
 function iniciarEvento(tipo) {
   if (tipo === 'descanso') mostrarDescanso();
@@ -613,7 +627,7 @@ function mostrarTesoro() {
 }
 
 // ============================================================
-//  CONQUISTA (cada 30 pisos)
+//  CONQUISTA
 // ============================================================
 function mostrarConquista() {
   const overlay = document.getElementById('conquistaOverlay');
@@ -723,6 +737,28 @@ function salirTienda() {
 }
 
 // ============================================================
+//  REVIVIR (Phoenix épica, apilable)
+// ============================================================
+function intentarRevivir() {
+  if (!jugador || !run || !run.bonuses) return false;
+  if (!run.bonuses.revivir) return false;
+  if (jugador.reviviresRestantes <= 0) return false;
+  if (jugador.salud > 0) return false;
+  jugador.reviviresRestantes--;
+  jugador.salud = Math.round(jugador.maxHealth * 0.40);
+  jugador.saludGhost = jugador.salud;
+  jugador.invulnerable = 90;
+  jugador.estado = 'idle';
+  spawnParticles(jugador.x, jugador.y - 55, 60, '#fb923c', 15);
+  spawnRing(jugador.x, jugador.y - 55, '#fb923c', 200);
+  shake(25);
+  mensajeGrande = '¡RENACER!';
+  mensajeTimer = 100;
+  SFX.victory();
+  return true;
+}
+
+// ============================================================
 //  OVERLAY DE BUILD (TAB)
 // ============================================================
 function renderBuildOverlay() {
@@ -751,17 +787,18 @@ function renderBuildOverlay() {
   if (b.sangradoPct > 0)         stats.push({icon:'🔴', label:'Sangrado',       value:b.sangradoPct + '/s'});
   if (b.dashPct > 0)             stats.push({icon:'👻', label:'Dash',           value:'+' + Math.round(b.dashPct*100) + '%'});
   if (b.dashDaño > 0)            stats.push({icon:'💨', label:'Daño dash',      value:b.dashDaño});
-  if (b.dashInvuln)              stats.push({icon:'✨', label:'Dash invuln',    value:'Sí'});
+  if (b.dashInvuln > 0)          stats.push({icon:'✨', label:'Dash invuln',    value:'+' + (b.dashInvuln * 8) + 'f'});
   if (b.saltosExtra > 0)         stats.push({icon:'🕊️', label:'Saltos extra',   value:'+' + b.saltosExtra});
   if (b.curaEntrePisos > 0)      stats.push({icon:'💊', label:'Cura por piso',  value:'+' + b.curaEntrePisos});
   if (b.dañoASlow > 0)           stats.push({icon:'❄️', label:'Daño a ralentizados', value:'+' + Math.round(b.dañoASlow*100) + '%'});
   if (b.velocidadComboPct > 0)   stats.push({icon:'💫', label:'Velocidad en combo', value:'+' + Math.round(b.velocidadComboPct*100) + '%'});
   if (b.furiaBajaVida > 0)       stats.push({icon:'🦅', label:'Furia baja vida', value:'+' + Math.round(b.furiaBajaVida*100) + '%'});
-  if (b.revivir)                 stats.push({icon:'♻️', label:'Revivir',        value:'1/piso'});
-  if (b.congelarEspecial)        stats.push({icon:'🧊', label:'Congelar esp.',  value:'Sí'});
-  if (b.clonEspecial)            stats.push({icon:'🌀', label:'Clon esp.',      value:'Sí'});
-  if (b.superArmorLeve)          stats.push({icon:'💪', label:'Super armor',    value:'Sí'});
-  if (b.critGarantizadoCombo)    stats.push({icon:'🎯', label:'Crit en combos', value:'5+ hits'});
+  if (b.revivir > 0)             stats.push({icon:'♻️', label:'Revivir',        value:b.revivir + '/piso'});
+  if (b.congelarEspecial > 0)    stats.push({icon:'🧊', label:'Congelar esp.',  value:(b.congelarEspecial * 2) + 's'});
+  if (b.clonEspecial > 0)        stats.push({icon:'🌀', label:'Clones esp.',    value:b.clonEspecial});
+  if (b.superArmorLeve > 0)      stats.push({icon:'💪', label:'Super armor',    value:'+' + (b.superArmorLeve * 3) + ' dmg'});
+  if (b.critGarantizadoCombo > 0)stats.push({icon:'🎯', label:'Crit en combos', value:'Desde 6-' + b.critGarantizadoCombo});
+  if (b.rayoFrecuencia < 4)      stats.push({icon:'⚡', label:'Rayo cada',      value:b.rayoFrecuencia + ' golpes'});
 
   const statsHtml = stats.length
     ? stats.map(function(s) {
@@ -793,12 +830,13 @@ function renderBuildOverlay() {
     const m = MEJORAS.find(function(x){ return x.id === id; });
     if (!m) return;
     const count = resumen[id];
+    const maxStack = m.maxStack || 3;
     const colorRareza = m.rarity === 'epica' ? '#a855f7' : (m.rarity === 'rara' ? '#38bdf8' : '#94a3b8');
     mejorasHtml += '<div class="mejora-item" style="border-left-color:' + colorRareza + '">' +
       '<span class="mejora-icon">' + m.icon + '</span>' +
       '<div class="mejora-info">' +
         '<div class="mejora-name">' + m.name +
-          (count > 1 ? ' <span class="mejora-count">×' + count + '</span>' : '') +
+          ' <span class="mejora-count">' + count + '/' + maxStack + '</span>' +
         '</div>' +
         '<div class="mejora-desc">' + m.desc + '</div>' +
       '</div>' +
@@ -873,29 +911,7 @@ function cerrarBuildOverlay() {
 }
 
 // ============================================================
-//  REVIVIR (mejora épica de Phoenix)
-// ============================================================
-function intentarRevivir() {
-  if (!jugador || !run || !run.bonuses) return false;
-  if (!run.bonuses.revivir) return false;
-  if (jugador.revivirUsado) return false;
-  if (jugador.salud > 0) return false;
-  jugador.revivirUsado = true;
-  jugador.salud = Math.round(jugador.maxHealth * 0.40);
-  jugador.saludGhost = jugador.salud;
-  jugador.invulnerable = 90;
-  jugador.estado = 'idle';
-  spawnParticles(jugador.x, jugador.y - 55, 60, '#fb923c', 15);
-  spawnRing(jugador.x, jugador.y - 55, '#fb923c', 200);
-  shake(25);
-  mensajeGrande = '¡RENACER!';
-  mensajeTimer = 100;
-  SFX.victory();
-  return true;
-}
-
-// ============================================================
-//  LISTENERS (TAB, conquista, tienda)
+//  LISTENERS
 // ============================================================
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Tab' && typeof modoActual !== 'undefined' && modoActual === 'roguelike' && run && run.activo) {
@@ -912,4 +928,3 @@ window.addEventListener('load', function() {
   if (btnRet) btnRet.addEventListener('click', conquistaRetirarse);
   if (btnSalir) btnSalir.addEventListener('click', salirTienda);
 });
-
