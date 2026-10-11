@@ -651,8 +651,16 @@ function render() {
 //  LOOP
 // ============================================================
 function loop() {
-  update();
-  render();
+  try {
+    update();
+  } catch (e) {
+    console.error('[LOOP] Error en update:', e);
+  }
+  try {
+    render();
+  } catch (e) {
+    console.error('[LOOP] Error en render:', e);
+  }
   requestAnimationFrame(loop);
 }
 
