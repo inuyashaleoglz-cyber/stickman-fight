@@ -873,6 +873,28 @@ function cerrarBuildOverlay() {
 }
 
 // ============================================================
+//  REVIVIR (mejora épica de Phoenix)
+// ============================================================
+function intentarRevivir() {
+  if (!jugador || !run || !run.bonuses) return false;
+  if (!run.bonuses.revivir) return false;
+  if (jugador.revivirUsado) return false;
+  if (jugador.salud > 0) return false;
+  jugador.revivirUsado = true;
+  jugador.salud = Math.round(jugador.maxHealth * 0.40);
+  jugador.saludGhost = jugador.salud;
+  jugador.invulnerable = 90;
+  jugador.estado = 'idle';
+  spawnParticles(jugador.x, jugador.y - 55, 60, '#fb923c', 15);
+  spawnRing(jugador.x, jugador.y - 55, '#fb923c', 200);
+  shake(25);
+  mensajeGrande = '¡RENACER!';
+  mensajeTimer = 100;
+  SFX.victory();
+  return true;
+}
+
+// ============================================================
 //  LISTENERS (TAB, conquista, tienda)
 // ============================================================
 document.addEventListener('keydown', function(e) {
@@ -890,3 +912,4 @@ window.addEventListener('load', function() {
   if (btnRet) btnRet.addEventListener('click', conquistaRetirarse);
   if (btnSalir) btnSalir.addEventListener('click', salirTienda);
 });
+
