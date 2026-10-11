@@ -7,7 +7,7 @@ let run = null;
 //  HELPERS DE PISO
 // ============================================================
 function factorPiso(piso) {
-  return 1 + (piso - 1) * 0.05;
+  return 1 + (piso - 1) * 0.025;
 }
 
 function dificultadDelPiso(piso) {
@@ -124,9 +124,9 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
     const factor = 1 + (piso - 1) * 0.05;
-    def.maxHealth = Math.round(def.maxHealth * factor * 1.5);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.03) * 1.25;
-    def.speed = def.speed * (1 + (piso - 1) * 0.01) * 1.05;
+    def.maxHealth = Math.round(def.maxHealth * factor * 1.30);
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
+    def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
     def.name = 'CAMPEÓN ' + def.name;
     def.__esBoss = true; def.__esBossFinal = false; def.__esElite = false;
   } else if (tipo === 'elite') {
@@ -134,9 +134,9 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
-    def.maxHealth = Math.round(def.maxHealth * factor * 1.4);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.03) * 1.25;
-    def.speed = def.speed * (1 + (piso - 1) * 0.01) * 1.05;
+    def.maxHealth = Math.round(def.maxHealth * factor * 1.20);
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
+    def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
     def.name = '★ ' + def.name;
     def.__esBoss = false; def.__esBossFinal = false; def.__esElite = true;
   } else {
@@ -340,7 +340,7 @@ function roguelikeAlTerminarPiso(ganador) {
   // Vida para siguiente piso
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
-  const recuperacion = Math.round(vidaMax * 0.20);
+  const recuperacion = Math.round(vidaMax * 0.30);
   const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
   run.__vidaAlEntrar = vidaSiguiente;
 
