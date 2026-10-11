@@ -76,6 +76,14 @@ function togglePausa() {
   pausado = !pausado;
 }
 
+function saltarAvisoBoss() {
+  if (estadoJuego !== 'boss_warning') return;
+  ocultarAvisoBoss();
+  estadoJuego = 'countdown';
+  countdownTimer = 180;
+  clearPresses();
+}
+
 // ============================================================
 //  FONDO
 // ============================================================
@@ -761,6 +769,16 @@ function setupMenu() {
   document.getElementById('victoryMenuBtn').addEventListener('click', function() {
     document.getElementById('victoryOverlay').classList.remove('active');
     volverAlMenu();
+  });
+    
+  // Botón de saltar el aviso de boss/elite
+  document.getElementById('bossWarningSkipBtn').addEventListener('click', function() {
+    saltarAvisoBoss();
+  });
+
+  // Clic en cualquier parte del overlay también salta
+  document.getElementById('bossWarningOverlay').addEventListener('click', function(e) {
+    if (e.target.id === 'bossWarningOverlay') saltarAvisoBoss();
   });
 
   // Botones de conquista y tienda
