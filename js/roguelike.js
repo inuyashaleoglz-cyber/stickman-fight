@@ -483,23 +483,34 @@ function mostrarGameOverRoguelike() {
   run.mejorasTomadas.forEach(function(id) {
     resumen[id] = (resumen[id] || 0) + 1;
   });
-  let listaMejoras = '';
-  Object.keys(resumen).forEach(function(id) {
-    const m = MEJORAS.find(function(x){ return x.id === id; });
-    if (m) listaMejoras += m.icon + ' ' + m.name + ' x' + resumen[id] + '<br>';
+   let listaMejoras = '<div class="mejoras-resumen">';
+  const idsOrdenados = Object.keys(resumen).sort(function(a,b) {
+    const ma = MEJORAS.find(function(x){ return x.id === a; });
+    const mb = MEJORAS.find(function(x){ return x.id === b; });
+    if (!ma || !mb) return 0;
+    return (mb.rarity === 'epica') - (ma.rarity === 'epica');
   });
-  if (!listaMejoras) listaMejoras = '<i>Sin mejoras</i>';
+  idsOrdenados.forEach(function(id) {
+    const m = MEJORAS.find(function(x){ return x.id === id; });
+    if (!m) return;
+    listaMejoras += '<span title="' + m.desc + '">' +
+      m.icon + ' ' + m.name +
+      (resumen[id] > 1 ? ' <span class="count">×' + resumen[id] + '</span>' : '') +
+      '</span>';
+  });
+  listaMejoras += '</div>';
+  if (idsOrdenados.length === 0) listaMejoras = '<i>Sin mejoras</i>';
 
   const records = cargarRecords();
   const esRecord = run.piso >= records.mejorPisoRoguelike;
 
-  stats.innerHTML =
+    stats.innerHTML =
     'Piso alcanzado: <b>' + run.piso + '</b><br>' +
     'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
     'Oro acumulado: <b>' + run.oro + '</b><br>' +
-    'Mejor combo: <b>' + run.comboTope + ' hits</b><br>' +
-    '<br><b>MEJORAS:</b><br>' + listaMejoras +
-    (esRecord ? '<br><span style="color:#4ade80">¡NUEVO RÉCORD!</span>' : '<br>Récord: piso ' + records.mejorPisoRoguelike);
+    'Mejor combo: <b>' + run.comboTope + ' hits</b>' +
+    (esRecord ? '<br><span style="color:#4ade80">¡NUEVO RÉCORD!</span>' : '<br>Récord: piso ' + records.mejorPisoRoguelike) +
+    '<br><br><b>MEJORAS (' + run.mejorasTomadas.length + '):</b>' + listaMejoras;
 
   overlay.classList.add('active');
 }
