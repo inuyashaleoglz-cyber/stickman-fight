@@ -790,3 +790,14 @@ function volverAlMenu() {
 // ============================================================
 setupMenu();
 loop();
+// Intentar arrancar música tras la primera interacción
+document.addEventListener('keydown', function arrancarMusicaOnce() {
+  initAudio();
+  playMusic('menu');
+  document.removeEventListener('keydown', arrancarMusicaOnce);
+}, { once: true });
+document.addEventListener('click', function arrancarMusicaOnceClick() {
+  initAudio();
+  playMusic('menu');
+  document.removeEventListener('click', arrancarMusicaOnceClick);
+}, { once: true });
