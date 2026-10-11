@@ -27,6 +27,17 @@ let koFocusX = 0;
 let koFocusY = 0;
 let slowmoFactor = 1;
 let slowmoTimer = 0;
+// VS Screen
+let vsScreenTimer = 0;
+let vsP1Color = '#4ade80';
+let vsP2Color = '#f87171';
+// PERFECT
+let dañoRecibidoRonda1 = 0;
+let dañoRecibidoRonda2 = 0;
+let esPerfectRound = false;
+// Combo calls
+let ultimoComboLlamado = 0;
+let dañoTotalInfligido = 0;
 
 // ============================================================
 //  CICLO DE PARTIDA
@@ -46,19 +57,101 @@ function iniciarRonda() {
   slowmoFactor = 1;
   slowmoTimer = 0;
   impactFrameTimer = 0;
-  estadoJuego = 'countdown';
-  countdownTimer = 180;
   mensajeGrande = ''; mensajeTimer = 0;
   pausado = false;
   clearPresses();
+
+  // VS Screen solo en la primera ronda del duelo rápido
+  if (modoActual === 'rapido' && victoriasJugador === 0 && victoriasIA === 0 && !vsScreenYaMostrado) {
+    mostrarVSScreen();
+    vsScreenYaMostrado = true;
+    return;
+  }
+  estadoJuego = 'countdown';
+  countdownTimer = 180;
+}
+
+let vsScreenYaMostrado = false;
+
+function mostrarVSScreen() {
+  const overlay = document.getElementById('vsScreenOverlay');
+  const p1Port = document.getElementById('vsP1Portrait');
+  const p2Port = document.getElementById('vsP2Portrait');
+  const p1Name = document.getElementById('vsP1Name');
+  const p2Name = document.getElementById('vsP2Name');
+
+  p1Port.style.color = jugador.color;
+  p2Port.style.color = ia.color;
+  p1Port.innerHTML = portraitSVG(jugador.color);
+  p2Port.innerHTML = portraitSVG(ia.color);
+  p1Name.textContent = jugador.name;
+  p2Name.textContent = ia.name;
+  p1Name.style.color = jugador.color;
+  p2Name.style.color = ia.color;
+
+  overlay.classList.add('active');
+  estadoJuego = 'vs_screen';
+  vsScreenTimer = 90;
+
+  // Sonido de aparición
+  if (typeof SFX !== 'undefined' && SFX.upgrade) SFX.upgrade();
+}
+
+function cerrarVSScreen() {
+  const overlay = document.getElementById('vsScreenOverlay');
+  if (overlay) overlay.classList.remove('active');
+  if (estadoJuego === 'vs_screen') {
+    estadoJuego = 'countdown';
+    countdownTimer = 180;
+  }
+}
+
+function portraitSVG(color) {
+  // Retrato simplificado del stickman (cabeza + hombros)
+  return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="50" cy="38" r="20" fill="' + color + '" stroke="#0a0618" stroke-width="3"/>' +
+    '<line x1="30" y1="38" x2="42" y2="38" stroke="#0a0618" stroke-width="4" stroke-linecap="round"/>' +
+    '<line x1="58" y1="38" x2="70" y2="38" stroke="#0a0618" stroke-width="4" stroke-linecap="round"/>' +
+    '<path d="M 20 95 Q 50 60 80 95" fill="' + color + '" stroke="#0a0618" stroke-width="3"/>' +
+    '</svg>';
+}
+
+function mostrarComboCall(texto) {
+  const el = document.getElementById('comboCallOverlay');
+  const txt = document.getElementById('comboCallText');
+  if (!el || !txt) return;
+  txt.textContent = texto;
+  el.classList.remove('active');
+  void el.offsetWidth; // forzar reinicio de animación
+  el.classList.add('active');
+  if (typeof ANNOUNCER_SFX !== 'undefined') ANNOUNCER_SFX.combo();
 }
 
 function iniciarPartida() {
+  vsScreenYaMostrado = false;
+  ultimoComboLlamado = 0;
+  dañoTotalInfligido = 0;
   if (modoActual === 'roguelike') {
     if (typeof playMusic === 'function') playMusic('combat');
     roguelikeIniciar(personajeJugador.id);
     return;
   }
+ 
+  if (typeof playMusic === 'function') playMusic('combat');
+  const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
+  personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
+  personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; });
+  jugador = new Fighter(personajeJugador, 200, 1, false);
+  ia = new Fighter(personajeIA, W - 200, -1, true);
+  victoriasJugador = 0; victoriasIA = 0;
+  comboTopeEstaPartida = 0;
+  dañoRecibidoRonda1 = 0;
+  dañoRecibidoRonda2 = 0;
+  esPerfectRound = false;
+  escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
+  if (typeof playAmbient === 'function') playAmbient(SCENARIOS[escenarioActual].id);
+  iniciarRonda();
+}
   if (typeof playMusic === 'function') playMusic('combat');
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
@@ -77,6 +170,11 @@ function togglePausa() {
   pausado = !pausado;
 }
 
+function saltarVSScreen() {
+  if (estadoJuego !== 'vs_screen') return;
+  cerrarVSScreen();
+}
+
 function saltarAvisoBoss() {
   if (window.__avisoTimer) {
     clearTimeout(window.__avisoTimer);
@@ -84,6 +182,15 @@ function saltarAvisoBoss() {
   }
   window.__avisoStartTime = null;
   ocultarAvisoBoss();
+
+    if (estadoJuego === 'vs_screen') {
+    vsScreenTimer--;
+    if (vsScreenTimer <= 0) {
+      cerrarVSScreen();
+    }
+    return;
+  }
+
   if (estadoJuego === 'boss_warning') {
     estadoJuego = 'countdown';
     countdownTimer = 180;
@@ -469,6 +576,16 @@ function update() {
     ia.actualizar(jugador, false);
 
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
+        
+    // Combo calls
+    if (jugador.combo >= 5 && jugador.combo !== ultimoComboLlamado) {
+      if (jugador.combo === 5) mostrarComboCall('¡COMBO!');
+      else if (jugador.combo === 10) mostrarComboCall('¡10 HITS!');
+      else if (jugador.combo === 15) mostrarComboCall('¡15 HITS!');
+      else if (jugador.combo === 20) mostrarComboCall('¡INCREÍBLE!');
+      ultimoComboLlamado = jugador.combo;
+    }
+    if (jugador.combo === 0) ultimoComboLlamado = 0;
         // Decay del shake direccional
     shakeDirX *= 0.85;
     if (Math.abs(shakeDirX) < 0.05) shakeDirX = 0;
@@ -528,7 +645,13 @@ function update() {
       mensajeTimer = 170;
       const dead = jugador.salud <= 0 ? jugador : ia;
       spawnParticles(dead.x, dead.y - 55, 40, dead.accent, 12);
-
+      
+      // Guardar si recibió daño en la ronda para PERFECT
+      if (modoActual === 'rapido') {
+        if (victoriasJugador === 0 && victoriasIA === 0) dañoRecibidoRonda1 = jugador.maxHealth - jugador.salud;
+        else dañoRecibidoRonda2 = jugador.maxHealth - jugador.salud;
+      }
+      
       if (modoActual === 'roguelike') {
         window.__roguelikeGanador = jugadorGano ? 'jugador' : 'ia';
       }
@@ -578,11 +701,21 @@ function update() {
 
       if (victoriasJugador >= ROUNDS_TO_WIN || victoriasIA >= ROUNDS_TO_WIN) {
         estadoJuego = 'matchover';
-        mensajeGrande = victoriasJugador >= ROUNDS_TO_WIN ? '¡GANASTE!' : 'PERDISTE';
+        const ganaste = victoriasJugador >= ROUNDS_TO_WIN;
+        // PERFECT: ganar 2-0 sin recibir daño
+        esPerfectRound = ganaste && victoriasIA === 0 &&
+                         dañoRecibidoRonda1 === 0 && dañoRecibidoRonda2 === 0;
+        if (esPerfectRound) {
+          mensajeGrande = '¡PERFECT!';
+          if (typeof ANNOUNCER_SFX !== 'undefined') setTimeout(function(){ ANNOUNCER_SFX.perfect(); }, 300);
+        } else {
+          mensajeGrande = ganaste ? '¡GANASTE!' : 'PERDISTE';
+        }
         mensajeTimer = 999999;
-        if (victoriasJugador >= ROUNDS_TO_WIN) {
+        if (ganaste) {
           registrarVictoria(personajeJugador.id, comboTopeEstaPartida);
           if (typeof SFX !== 'undefined') SFX.victory();
+          jugador.poseVictoria = true;
         } else {
           if (typeof SFX !== 'undefined') SFX.defeat();
         }
@@ -668,7 +801,20 @@ ctx.save();
     ctx.fillText('R PARA REJUGAR', W/2, H/2 + 90);
     ctx.fillText('O VUELVE AL MENÚ', W/2, H/2 + 120);
   }
-
+  
+  // Cartel PERFECT en matchover
+  if (estadoJuego === 'matchover' && esPerfectRound) {
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '100px "Black Ops One", sans-serif';
+    ctx.shadowColor = '#fff7a1'; ctx.shadowBlur = 60;
+    ctx.fillStyle = '#fff7a1';
+    ctx.strokeStyle = '#0a0618'; ctx.lineWidth = 10;
+    ctx.strokeText('¡PERFECT!', W/2, H/2 - 100);
+    ctx.fillText('¡PERFECT!', W/2, H/2 - 100);
+    ctx.restore();
+  }
+  
   if (pausado) drawPausa();
 }
 
@@ -832,7 +978,12 @@ function setupMenu() {
     });
   }
 }
-
+  
+// VS Screen se puede saltar
+  const overlayVS = document.getElementById('vsScreenOverlay');
+  if (overlayVS) {
+    overlayVS.addEventListener('click', function() { saltarVSScreen(); });
+  }
 function volverAlMenu() {
   if (typeof playMusic === 'function') playMusic('menu');
   if (typeof stopAmbient === 'function') stopAmbient();
