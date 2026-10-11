@@ -55,7 +55,7 @@ function drawDamageNumbers() {
   for (let i = 0; i < dmgNumbers.length; i++) {
     const d = dmgNumbers[i];
     ctx.globalAlpha = Math.min(1, d.life / 25);
-    ctx.font = '900 ' + (d.big ? 30 : 19) + "px 'Segoe UI', sans-serif";
+    ctx.font = (d.big ? 26 : 18) + 'px "Black Ops One", sans-serif';
     ctx.fillStyle = d.color;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = d.big ? 4 : 3;
