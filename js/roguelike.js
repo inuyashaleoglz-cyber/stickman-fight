@@ -3,6 +3,23 @@
 // ============================================================
 let run = null;
 
+// ============================================================
+//  HELPERS DE PISO
+// ============================================================
+function factorPiso(piso) {
+  return 1 + (piso - 1) * 0.05;
+}
+
+function dificultadDelPiso(piso) {
+  if (piso <= 5) return 'facil';
+  if (piso <= 12) return 'normal';
+  if (piso <= 22) return 'dificil';
+  return 'pesadilla';
+}
+
+// ============================================================
+//  ELECCIÓN DE MEJORAS
+// ============================================================
 function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
   const personajeActual = run ? run.personajeId : null;
   const disponibles = MEJORAS.filter(function(m) {
@@ -26,6 +43,46 @@ function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
   return elegidas;
 }
 
+function elegirMejorasAleatorias(cantidad) {
+  const personajeActual = run ? run.personajeId : null;
+  const disponibles = MEJORAS.filter(function(m) {
+    if (!m.soloPara) return true;
+    return m.soloPara === personajeActual;
+  });
+
+  const porRareza = { comun: [], rara: [], epica: [] };
+  disponibles.forEach(function(m){
+    if (porRareza[m.rarity]) porRareza[m.rarity].push(m);
+  });
+
+  const elegidas = [];
+  const usadas = {};
+
+  for (let i = 0; i < cantidad; i++) {
+    const r = Math.random() * 100;
+    let rareza;
+    if (r < RARITY_WEIGHTS.epica) rareza = 'epica';
+    else if (r < RARITY_WEIGHTS.epica + RARITY_WEIGHTS.rara) rareza = 'rara';
+    else rareza = 'comun';
+
+    let pool = porRareza[rareza].filter(function(m){ return !usadas[m.id]; });
+    if (pool.length === 0) {
+      const todas = disponibles.filter(function(m){ return !usadas[m.id]; });
+      if (todas.length === 0) break;
+      pool = todas;
+    }
+
+    const elegida = pool[Math.floor(Math.random() * pool.length)];
+    elegidas.push(elegida);
+    usadas[elegida.id] = true;
+  }
+
+  return elegidas;
+}
+
+// ============================================================
+//  CREAR RUN
+// ============================================================
 function crearRun(personajeId) {
   return {
     activo: true,
@@ -35,28 +92,19 @@ function crearRun(personajeId) {
     bonuses: bonusesVacios(),
     comboTope: 0,
     dañoTotal: 0,
-    rivalesVencidos: []
+    rivalesVencidos: [],
+    sinergiaPendienteAviso: null,
+    esBossPiso: false,
+    esBossPisoFinal: false,
+    esElitePiso: false,
+    eleccionesRestantes: 0,
+    __vidaAlEntrar: undefined
   };
 }
 
 // ============================================================
-//  ESCALADO DEL RIVAL POR PISO
+//  CREAR RIVAL DEL PISO
 // ============================================================
-function factorPiso(piso) {
-  // Escala suave: piso 1 = 1.0, piso 30 = 2.5
-  return 1 + (piso - 1) * 0.05;
-}
-
-// ============================================================
-//  DIFICULTAD SEGÚN EL PISO
-// ============================================================
-function dificultadDelPiso(piso) {
-  if (piso <= 5) return 'facil';
-  if (piso <= 12) return 'normal';
-  if (piso <= 22) return 'dificil';
-  return 'pesadilla';
-}
-
 function crearRivalDelPiso(piso, personajeJugadorId) {
   const tipo = tipoDePiso(piso);
   let def;
@@ -103,87 +151,36 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
 }
 
 // ============================================================
-//  GENERAR 3 MEJORAS ALEATORIAS
+//  CONSTRUIR JUGADOR CON BONUSES
 // ============================================================
-function elegirMejorasAleatorias(cantidad) {
-  // Filtrar mejoras disponibles para el personaje actual
-  const personajeActual = run ? run.personajeId : null;
-  const disponibles = MEJORAS.filter(function(m) {
-    // Las mejoras sin "soloPara" son para todos
-    if (!m.soloPara) return true;
-    // Las que tienen "soloPara" solo aparecen si coincide con el personaje
-    return m.soloPara === personajeActual;
-  });
-
-  // Agrupar por rareza
-  const porRareza = { comun: [], rara: [], epica: [] };
-  disponibles.forEach(function(m){
-    if (porRareza[m.rarity]) porRareza[m.rarity].push(m);
-  });
-
-  const elegidas = [];
-  const usadas = {};
-
-  for (let i = 0; i < cantidad; i++) {
-    const r = Math.random() * 100;
-    let rareza;
-    if (r < RARITY_WEIGHTS.epica) rareza = 'epica';
-    else if (r < RARITY_WEIGHTS.epica + RARITY_WEIGHTS.rara) rareza = 'rara';
-    else rareza = 'comun';
-
-    let pool = porRareza[rareza].filter(function(m){ return !usadas[m.id]; });
-    if (pool.length === 0) {
-      // Si se agotó esta rareza, juntar todas las disponibles
-      const todas = disponibles.filter(function(m){ return !usadas[m.id]; });
-      if (todas.length === 0) break;
-      pool = todas;
-    }
-
-    const elegida = pool[Math.floor(Math.random() * pool.length)];
-    elegidas.push(elegida);
-    usadas[elegida.id] = true;
-  }
-
-  return elegidas;
+function construirJugadorConBonuses() {
+  const base = CHARACTERS.find(function(c){ return c.id === run.personajeId; });
+  const def = JSON.parse(JSON.stringify(base));
+  def.maxHealth = base.maxHealth + run.bonuses.vidaMax;
+  def.speed = base.speed * (1 + run.bonuses.velocidadPct);
+  def.dmgMult = base.dmgMult * (1 + run.bonuses.dañoPct);
+  def.__bonuses = run.bonuses;
+  return def;
 }
 
 // ============================================================
-//  APLICAR MEJORA AL RUN
+//  APLICAR MEJORA (+ sinergias)
 // ============================================================
 function aplicarMejora(mejora) {
   mejora.apply(run.bonuses);
   run.mejorasTomadas.push(mejora.id);
 
-  // Revisar si se activa alguna sinergia nueva
   SINERGIAS.forEach(function(s) {
-    // ¿Ya la tenemos activada? Saltar.
     if (run.bonuses.sinergiasActivas.indexOf(s.id) !== -1) return;
-    // ¿Tenemos todas las mejoras requeridas?
     const tieneTodas = s.requiere.every(function(reqId) {
       return run.mejorasTomadas.indexOf(reqId) !== -1;
     });
     if (tieneTodas) {
       s.apply(run.bonuses);
       run.bonuses.sinergiasActivas.push(s.id);
-      // Mostrar aviso en el HUD de la próxima pelea
       run.sinergiaPendienteAviso = s;
     }
   });
-}
-
-// ============================================================
-//  CONSTRUIR FIGHTER DEL JUGADOR CON BONUSES
-// ============================================================
-function construirJugadorConBonuses() {
-  const base = CHARACTERS.find(function(c){ return c.id === run.personajeId; });
-  const def = JSON.parse(JSON.stringify(base));
-  // Aplicar bonuses al def
-  def.maxHealth = base.maxHealth + run.bonuses.vidaMax;
-  def.speed = base.speed * (1 + run.bonuses.velocidadPct);
-  def.dmgMult = base.dmgMult * (1 + run.bonuses.dañoPct);
-  // Guardar bonuses por separado para lógica especial
-  def.__bonuses = run.bonuses;
-  return def;
 }
 
 // ============================================================
@@ -270,16 +267,14 @@ function roguelikeEmpezarPiso() {
 }
 
 // ============================================================
-//  AVISO DE BOSS
+//  AVISO DE BOSS / ELITE
 // ============================================================
 function mostrarAvisoBoss(rivalDef) {
   const overlay = document.getElementById('bossWarningOverlay');
   const title = document.getElementById('bossWarningTitle');
   const sub = document.getElementById('bossWarningSub');
   const icon = document.getElementById('bossWarningIcon');
-
   overlay.classList.remove('elite');
-
   if (rivalDef.__esBossFinal) {
     overlay.classList.add('final');
     title.textContent = rivalDef.name;
@@ -299,7 +294,6 @@ function mostrarAvisoElite() {
   const title = document.getElementById('bossWarningTitle');
   const sub = document.getElementById('bossWarningSub');
   const icon = document.getElementById('bossWarningIcon');
-
   overlay.classList.remove('final');
   overlay.classList.add('elite');
   title.textContent = '¡ELITE!';
@@ -316,7 +310,10 @@ function ocultarAvisoBoss() {
     overlay.classList.remove('elite');
   }
 }
-  
+
+// ============================================================
+//  TERMINAR PISO
+// ============================================================
 function roguelikeAlTerminarPiso(ganador) {
   if (ganador === 'ia') {
     run.activo = false;
@@ -354,29 +351,26 @@ function roguelikeAlTerminarPiso(ganador) {
   }
 }
 
-// ============================================================
-//  TANDAS DE MEJORAS (para recompensa doble tras boss)
-// ============================================================
 function mostrarSiguienteTandaMejoras() {
   const opciones = elegirMejorasAleatorias(3);
   mostrarPantallaMejoras(opciones);
 }
 
+// ============================================================
+//  ELEGIR MEJORA
+// ============================================================
 function roguelikeElegirMejora(mejora) {
   aplicarMejora(mejora);
 
-  // ¿Quedan elecciones pendientes? (boss = 2)
   if (run.eleccionesRestantes > 1) {
     run.eleccionesRestantes--;
     ocultarPantallaMejoras();
-    // Pequeña pausa y mostrar nueva tanda
     setTimeout(function() {
       if (run && run.activo) mostrarSiguienteTandaMejoras();
     }, 200);
     return;
   }
 
-  // Ya no quedan elecciones: avanzar piso
   run.eleccionesRestantes = 0;
   run.piso++;
   ocultarPantallaMejoras();
@@ -443,6 +437,7 @@ function mostrarPantallaMejoras(opciones, textoCustom) {
     document.getElementById('upgradeOverlay').appendChild(btnBuild);
   }
 }
+
 function ocultarPantallaMejoras() {
   document.getElementById('upgradeOverlay').classList.remove('active');
   cerrarBuildOverlay();
@@ -459,7 +454,6 @@ function mostrarGameOverRoguelike() {
 
   sub.textContent = 'Caíste en el piso ' + run.piso;
 
-  // Contar mejoras tomadas
   const resumen = {};
   run.mejorasTomadas.forEach(function(id) {
     resumen[id] = (resumen[id] || 0) + 1;
@@ -475,7 +469,7 @@ function mostrarGameOverRoguelike() {
   const esRecord = run.piso >= records.mejorPisoRoguelike;
 
   stats.innerHTML =
-    'Piso alcanzado: <b>' + run.piso + ' / 30</b><br>' +
+    'Piso alcanzado: <b>' + run.piso + ' / ' + MAX_PISO + '</b><br>' +
     'Rivales vencidos: <b>' + run.rivalesVencidos.length + '</b><br>' +
     'Mejor combo: <b>' + run.comboTope + ' hits</b><br>' +
     '<br><b>MEJORAS:</b><br>' + listaMejoras +
@@ -493,13 +487,91 @@ function mostrarVictoriaRoguelike() {
   const stats = document.getElementById('victoryStats');
 
   stats.innerHTML =
-    '¡Has conquistado los 30 pisos!<br><br>' +
+    '¡Has conquistado los ' + MAX_PISO + ' pisos!<br><br>' +
     'Personaje: <b>' + personajeJugador.name + '</b><br>' +
     'Mejor combo: <b>' + run.comboTope + ' hits</b><br>' +
     'Mejoras totales: <b>' + run.mejorasTomadas.length + '</b>';
 
   overlay.classList.add('active');
 }
+
+// ============================================================
+//  EVENTOS (descanso / tesoro)
+// ============================================================
+function iniciarEvento(tipo) {
+  if (tipo === 'descanso') mostrarDescanso();
+  else if (tipo === 'tesoro') mostrarTesoro();
+}
+
+function mostrarDescanso() {
+  const overlay = document.getElementById('descansoOverlay');
+  const grid = document.getElementById('descansoGrid');
+  grid.innerHTML = '';
+
+  const opciones = [
+    {
+      icon: '💚', name: 'RECUPERAR VIDA',
+      desc: 'Recuperas el 50% de tu vida máxima.',
+      apply: function() {
+        const vidaMax = construirJugadorConBonuses().maxHealth;
+        const vidaActual = (run.__vidaAlEntrar !== undefined) ? run.__vidaAlEntrar : vidaMax;
+        const curacion = Math.round(vidaMax * 0.5);
+        run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + curacion);
+      }
+    },
+    {
+      icon: '❤️', name: 'CORAZÓN DE HIERRO',
+      desc: '+40 de vida máxima permanente.',
+      apply: function() {
+        run.bonuses.vidaMax += 40;
+        const vidaMax = construirJugadorConBonuses().maxHealth;
+        const vidaActual = (run.__vidaAlEntrar !== undefined) ? run.__vidaAlEntrar : vidaMax;
+        run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + 40);
+      }
+    },
+    {
+      icon: '🎁', name: 'OBSEQUIO DEL DESTINO',
+      desc: 'Recibes 2 mejoras aleatorias al azar.',
+      apply: function() {
+        const aleatorias = elegirMejorasAleatorias(2);
+        aleatorias.forEach(function(m) { aplicarMejora(m); });
+      }
+    }
+  ];
+
+  opciones.forEach(function(op) {
+    const card = document.createElement('div');
+    card.className = 'descanso-card';
+    card.innerHTML =
+      '<span class="icon">' + op.icon + '</span>' +
+      '<div class="name">' + op.name + '</div>' +
+      '<div class="desc">' + op.desc + '</div>';
+    card.addEventListener('click', function() {
+      SFX.upgrade();
+      op.apply();
+      ocultarDescanso();
+      run.piso++;
+      setTimeout(function() {
+        if (run && run.activo) roguelikeEmpezarPiso();
+      }, 300);
+    });
+    grid.appendChild(card);
+  });
+
+  overlay.classList.add('active');
+}
+
+function ocultarDescanso() {
+  const el = document.getElementById('descansoOverlay');
+  if (el) el.classList.remove('active');
+}
+
+function mostrarTesoro() {
+  run.eleccionesRestantes = 1;
+  const opciones = elegirMejorasAleatoriasConRareza(3, 'epica');
+  mostrarPantallaMejoras(opciones, '💎 TESORO · Elige una mejora épica');
+}
+
 // ============================================================
 //  OVERLAY DE BUILD (TAB)
 // ============================================================
@@ -510,7 +582,6 @@ function renderBuildOverlay() {
 
   const b = run.bonuses;
 
-  // --- BONUS ACTIVOS ---
   const stats = [];
   if (b.dañoPct > 0)             stats.push({icon:'💥', label:'Daño',           value:'+' + Math.round(b.dañoPct*100) + '%'});
   if (b.vidaMax > 0)             stats.push({icon:'❤️', label:'Vida máx',       value:'+' + b.vidaMax});
@@ -553,14 +624,12 @@ function renderBuildOverlay() {
     : '<p style="color:#666;font-size:12px">Aún no tienes bonus. Elige mejoras al terminar cada piso.</p>';
   document.getElementById('buildStats').innerHTML = statsHtml;
 
-  // --- MEJORAS AGRUPADAS ---
   const resumen = {};
   run.mejorasTomadas.forEach(function(id) {
     resumen[id] = (resumen[id] || 0) + 1;
   });
   const idsMejoras = Object.keys(resumen);
 
-  // Ordenar por rareza (épica primero)
   const ordenRareza = { epica: 0, rara: 1, comun: 2 };
   idsMejoras.sort(function(a, b) {
     const ma = MEJORAS.find(function(x){ return x.id === a; });
@@ -588,7 +657,6 @@ function renderBuildOverlay() {
   document.getElementById('buildCountMejoras').textContent = run.mejorasTomadas.length;
   document.getElementById('buildMejoras').innerHTML = mejorasHtml || '<p style="color:#666;font-size:12px">Aún no tienes mejoras.</p>';
 
-  // --- SINERGIAS ---
   let sinHtml = '';
   SINERGIAS.forEach(function(s) {
     const activa = run.bonuses.sinergiasActivas.indexOf(s.id) !== -1;
@@ -654,87 +722,10 @@ function cerrarBuildOverlay() {
   if (el) el.classList.remove('active');
 }
 
-// Listener de TAB
+// Listener de TAB (una sola vez, al cargar)
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Tab' && typeof modoActual !== 'undefined' && modoActual === 'roguelike' && run && run.activo) {
     e.preventDefault();
     toggleBuildOverlay();
   }
-
-// ============================================================
-//  EVENTOS (descanso / tesoro)
-// ============================================================
-function iniciarEvento(tipo) {
-  if (tipo === 'descanso') mostrarDescanso();
-  else if (tipo === 'tesoro') mostrarTesoro();
-}
-
-function mostrarDescanso() {
-  const overlay = document.getElementById('descansoOverlay');
-  const grid = document.getElementById('descansoGrid');
-  grid.innerHTML = '';
-
-  const opciones = [
-    {
-      icon: '💚', name: 'RECUPERAR VIDA',
-      desc: 'Recuperas el 50% de tu vida máxima.',
-      apply: function() {
-        const vidaMax = jugador ? jugador.maxHealth : construirJugadorConBonuses().maxHealth;
-        const vidaActual = run.__vidaAlEntrar !== undefined ? run.__vidaAlEntrar : vidaMax;
-        const curacion = Math.round(vidaMax * 0.5);
-        run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + curacion);
-      }
-    },
-    {
-      icon: '❤️', name: 'CORAZÓN DE HIERRO',
-      desc: '+40 de vida máxima permanente.',
-      apply: function() {
-        run.bonuses.vidaMax += 40;
-        const vidaMax = construirJugadorConBonuses().maxHealth;
-        const vidaActual = run.__vidaAlEntrar !== undefined ? run.__vidaAlEntrar : vidaMax;
-        run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + 40);
-      }
-    },
-    {
-      icon: '🎁', name: 'OBSEQUIO DEL DESTINO',
-      desc: 'Recibes 2 mejoras aleatorias al azar.',
-      apply: function() {
-        const aleatorias = elegirMejorasAleatorias(2);
-        aleatorias.forEach(function(m) { aplicarMejora(m); });
-      }
-    }
-  ];
-
-  opciones.forEach(function(op) {
-    const card = document.createElement('div');
-    card.className = 'descanso-card';
-    card.innerHTML =
-      '<span class="icon">' + op.icon + '</span>' +
-      '<div class="name">' + op.name + '</div>' +
-      '<div class="desc">' + op.desc + '</div>';
-    card.addEventListener('click', function() {
-      SFX.upgrade();
-      op.apply();
-      ocultarDescanso();
-      run.piso++;
-      setTimeout(function() {
-        if (run && run.activo) roguelikeEmpezarPiso();
-      }, 300);
-    });
-    grid.appendChild(card);
-  });
-
-  overlay.classList.add('active');
-}
-
-function ocultarDescanso() {
-  const el = document.getElementById('descansoOverlay');
-  if (el) el.classList.remove('active');
-}
-
-function mostrarTesoro() {
-  run.eleccionesRestantes = 1;
-  const opciones = elegirMejorasAleatoriasConRareza(3, 'epica');
-  mostrarPantallaMejoras(opciones, '💎 TESORO · Elige una mejora épica');
-}
 });
