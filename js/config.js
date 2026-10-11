@@ -93,7 +93,7 @@ const AIS = {
   facil:     {name:'FÁCIL',     color:'#4ade80', reaction:26, aggression:0.35, blockChance:0.25, dodgeChance:0.15, speedMult:0.80, dmgMult:0.75, prediction:0.0, specialUse:0.3},
   normal:    {name:'NORMAL',    color:'#38bdf8', reaction:16, aggression:0.60, blockChance:0.45, dodgeChance:0.30, speedMult:0.95, dmgMult:1.00, prediction:0.2, specialUse:0.6},
   dificil:   {name:'DIFÍCIL',   color:'#fbbf24', reaction:9,  aggression:0.80, blockChance:0.65, dodgeChance:0.45, speedMult:1.10, dmgMult:1.15, prediction:0.45, specialUse:0.85},
-  pesadilla: {name:'PESADILLA', color:'#ef4444', reaction:5,  aggression:0.95, blockChance:0.82, dodgeChance:0.65, speedMult:1.25, dmgMult:1.30, prediction:0.75, specialUse:1.0}
+  pesadilla: {name:'PESADILLA', color:'#ef4444', reaction:7,  aggression:0.85, blockChance:0.75, dodgeChance:0.55, speedMult:1.18, dmgMult:1.20, prediction:0.55, specialUse:0.90}
 };
 
 // ============================================================
