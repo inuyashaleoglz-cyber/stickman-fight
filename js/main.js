@@ -18,6 +18,7 @@ let pausado = false;
 let escenarioActual = 0;
 let comboTopeEstaPartida = 0;
 let modoActual = 'rapido';
+let impactFrameTimer = 0;
 
 // ============================================================
 //  CICLO DE PARTIDA
@@ -375,6 +376,12 @@ function update() {
   time++;
   updateAllEffects();
 
+  // Impact frame: congela 4 frames tras un golpe fuerte
+  if (impactFrameTimer > 0) {
+    impactFrameTimer--;
+    return;
+  }
+
   if (!jugador || !ia) return;
 
   if (mensajeTimer > 0) mensajeTimer--;
@@ -507,9 +514,15 @@ function update() {
 //  RENDER
 // ============================================================
 function render() {
-  ctx.save();
+ctx.save();
   if (shakeAmount > 0)
     ctx.translate((Math.random()-0.5)*shakeAmount, (Math.random()-0.5)*shakeAmount);
+
+  // Flash blanco sobre impact frame
+  if (impactFrameTimer > 0) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (impactFrameTimer / 4 * 0.35) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
 
   drawBackground();
 
