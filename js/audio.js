@@ -194,9 +194,9 @@ const SFX = {
     tono(260, 50, 0.7, 'sawtooth', 0.15);
     tono(130, 30, 1.0, 'sine', 0.13);
     ruidoBlanco(0.5, 0.12, 500);
-    // Coro descendente
     setTimeout(function() { tono(400, 200, 0.5, 'triangle', 0.08); }, 200);
     setTimeout(function() { tono(300, 150, 0.5, 'triangle', 0.07); }, 350);
+    if (typeof ANNOUNCER_SFX !== 'undefined') setTimeout(function(){ ANNOUNCER_SFX.ko(); }, 200);
   },
 
   // BEEP DE CUENTA ATRÁS
@@ -206,11 +206,12 @@ const SFX = {
   },
 
   // ¡PELEA! — Fanfarria corta
-  fight: function() {
+ fight: function() {
     tono(330, 330, 0.12, 'square', 0.11);
     setTimeout(function(){ tono(440, 440, 0.12, 'square', 0.11); }, 110);
     setTimeout(function(){ tono(660, 990, 0.4, 'square', 0.13); }, 220);
     tono(165, 330, 0.5, 'sawtooth', 0.09);
+    if (typeof ANNOUNCER_SFX !== 'undefined') setTimeout(function(){ ANNOUNCER_SFX.fight(); }, 100);
   },
 
   // SALTO: corto y aireado
@@ -247,6 +248,7 @@ const SFX = {
     setTimeout(function(){ tono(784, 784, 0.14, 'square', 0.1); }, 260);
     setTimeout(function(){ tono(1047, 1047, 0.5, 'square', 0.12); }, 390);
     setTimeout(function(){ tono(1319, 1319, 0.5, 'sine', 0.09); }, 390);
+    if (typeof ANNOUNCER_SFX !== 'undefined') setTimeout(function(){ ANNOUNCER_SFX.winner(); }, 500);
   }
 };
 
@@ -669,3 +671,44 @@ document.addEventListener('keydown', function(e) {
     console.log('Audio ' + (m ? 'silenciado' : 'activado'));
   }
 });
+// ============================================================
+//  ANNOUNCER (voces arcade)
+// ============================================================
+function anunciar(texto, tono, velocidad) {
+  if (!audioCtx) return;
+  tono = tono || 0.6;
+  velocidad = velocidad || 1.0;
+  try {
+    if (typeof speechSynthesis === 'undefined') return;
+    // Cancelar cualquier utterance previa para que no se encimen
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'en-US';
+    u.pitch = tono;
+    u.rate = velocidad;
+    u.volume = 0.9;
+    // Intentar buscar una voz masculina si existe
+    const voces = speechSynthesis.getVoices();
+    const vozGrave = voces.find(function(v) {
+      return v.lang.indexOf('en') === 0 && (v.name.indexOf('Male') !== -1 || v.name.indexOf('David') !== -1 || v.name.indexOf('Google UK English Male') !== -1);
+    });
+    if (vozGrave) u.voice = vozGrave;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+// Precargar voces (algunos navegadores las cargan async)
+if (typeof speechSynthesis !== 'undefined') {
+  speechSynthesis.onvoiceschanged = function() { speechSynthesis.getVoices(); };
+}
+
+// Sonidos cortos del announcer (sin voz, para combos rápidos)
+const ANNOUNCER_SFX = {
+  fight:   function() { anunciar('Fight!', 0.4, 1.3); },
+  ko:      function() { anunciar('K.O.!', 0.3, 0.9); },
+  perfect: function() { anunciar('Perfect!', 0.5, 1.1); },
+  combo:   function() { anunciar('Combo!', 0.5, 1.4); },
+  winner:  function() { anunciar('You win!', 0.4, 1.0); },
+  loser:   function() { anunciar('You lose', 0.4, 0.9); }
+};
+
