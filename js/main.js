@@ -77,7 +77,12 @@ function togglePausa() {
 }
 
 function saltarAvisoBoss() {
+  console.log('[AVISO] saltarAvisoBoss llamado. estadoJuego =', estadoJuego);
   if (estadoJuego !== 'boss_warning') return;
+  if (window.__bossBackupTimeout) {
+    clearTimeout(window.__bossBackupTimeout);
+    window.__bossBackupTimeout = null;
+  }
   ocultarAvisoBoss();
   estadoJuego = 'countdown';
   countdownTimer = 180;
