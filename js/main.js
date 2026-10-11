@@ -53,9 +53,12 @@ function iniciarRonda() {
 
 function iniciarPartida() {
   if (modoActual === 'roguelike') {
+    playMusic('combat');
     roguelikeIniciar(personajeJugador.id);
     return;
   }
+  playMusic('combat');
+  
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
   personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; });
