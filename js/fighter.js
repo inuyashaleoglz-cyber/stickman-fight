@@ -604,16 +604,15 @@ class Fighter {
         SFX.hit();
       }
     }
-
-      const colorDmg = esCritico ? '#ef4444' : (mv.special ? '#fbbf24' : '#fff');
-    spawnDamageNumber(hx, hy - 15, (esCritico ? '¡' : '-') + dmgFinal + (esCritico ? '!' : ''), colorDmg, esCritico || dmgFinal >= 12);
+    const colorDmg = esCritico ? '#ef4444' : (mv.special ? '#fbbf24' : '#fff');    spawnDamageNumber(hx, hy - 15, (esCritico ? '¡' : '-') + dmgFinal + (esCritico ? '!' : ''), colorDmg, esCritico || dmgFinal >= 12);
+    
     shake(esCritico ? 14 : (mv.special ? 18 : (dmgFinal >= 12 ? 9 : 5)));
     SFX.hit();
     // Activar impact frame en críticos y especiales
     if (typeof impactFrameTimer !== 'undefined') {
       if (esCritico || mv.special) impactFrameTimer = 4;
     }
-
+  }
   recibirDaño(daño, atacante, tipo) {
     if (this.blocking && atacante && ((atacante.x - this.x) * this.facing < 0)) {
       let reduccion = 0.15;
