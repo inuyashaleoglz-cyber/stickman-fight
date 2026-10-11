@@ -241,18 +241,18 @@ function drawHealthBar(x, y, ancho, alto, salud, saludGhost, maxHealth, color, i
   ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
   ctx.strokeRect(x, mY, ancho, mH);
 
-  ctx.font = 'bold 17px Segoe UI, sans-serif';
+  ctx.font = 'bold 18px "Black Ops One", sans-serif';
   ctx.fillStyle = color;
   ctx.textAlign = invertida ? 'right' : 'left';
   const nombreX = invertida ? x + ancho : x;
-  const textoNombre = piso ? nombre + ' — Piso ' + piso : nombre;
+  const textoNombre = piso ? nombre + ' · P' + piso : nombre;
   ctx.fillText(textoNombre, nombreX, y - 10);
 
   if (meter >= 100) {
-    ctx.font = 'bold 11px Segoe UI, sans-serif';
-    ctx.fillStyle = '#fde047';
+    ctx.font = '9px "Press Start 2P", monospace';
+    ctx.fillStyle = '#fff7a1';
     ctx.textAlign = invertida ? 'right' : 'left';
-    ctx.fillText('★ ' + specialName + ' LISTO ★', nombreX, mY + mH + 14);
+    ctx.fillText('★ LISTO ★', nombreX, mY + mH + 14);
   }
 }
 
@@ -277,23 +277,27 @@ function drawHUD() {
     }
   }
 
-  ctx.font = 'bold 22px Segoe UI, sans-serif';
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.font = '20px "Black Ops One", sans-serif';
+  ctx.fillStyle = '#ff9ecd';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#ff9ecd'; ctx.shadowBlur = 10;
   ctx.fillText('VS', W/2, y + barH/2 + 8);
+  ctx.shadowBlur = 0;
 
-  ctx.font = 'bold 10px Segoe UI, sans-serif';
+  ctx.font = '8px "Press Start 2P", monospace';
   ctx.fillStyle = AIS[dificultad].color;
   ctx.fillText(AIS[dificultad].name, W/2, y + barH + 12);
 
-  ctx.font = 'bold 10px Segoe UI, sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '9px "Press Start 2P", monospace';
+  ctx.fillStyle = 'rgba(208,183,255,0.5)';
   ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
 
   // Sinergias activas (roguelike)
-  if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
-    ctx.font = 'bold 11px Segoe UI, sans-serif';
-    ctx.fillStyle = '#d8b4fe';
+    if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillStyle = '#d0b7ff';
     ctx.textAlign = 'left';
+    ctx.shadowColor = '#d0b7ff'; ctx.shadowBlur = 8;
     let texto = '✦ ';
     run.bonuses.sinergiasActivas.forEach(function(id, idx) {
       const s = SINERGIAS.find(function(x){ return x.id === id; });
@@ -304,10 +308,12 @@ function drawHUD() {
 
   // Oro (roguelike)
   if (modoActual === 'roguelike' && run) {
-    ctx.font = 'bold 14px Segoe UI, sans-serif';
-    ctx.fillStyle = '#fde047';
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.fillStyle = '#fff7a1';
     ctx.textAlign = 'right';
+    ctx.shadowColor = '#fff7a1'; ctx.shadowBlur = 10;
     ctx.fillText('💰 ' + run.oro, W - 20, y + barH + 55);
+    ctx.shadowBlur = 0;;
   }
 }
 
@@ -320,9 +326,9 @@ function drawBigMessage() {
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '900 100px Segoe UI, sans-serif';
-  ctx.strokeStyle = '#000'; ctx.lineWidth = 8;
-  ctx.shadowColor = '#e94560'; ctx.shadowBlur = 40;
+  ctx.font = '100px "Black Ops One", sans-serif';
+  ctx.strokeStyle = '#0a0618'; ctx.lineWidth = 8;
+  ctx.shadowColor = '#ff9ecd'; ctx.shadowBlur = 40;
   ctx.strokeText(mensajeGrande, W/2, H/2 - 20);
   ctx.fillStyle = '#fff';
   ctx.fillText(mensajeGrande, W/2, H/2 - 20);
@@ -335,9 +341,9 @@ function drawCountdown() {
   ctx.save();
   ctx.translate(W/2, H/2 - 20); ctx.scale(escala, escala);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '900 140px Segoe UI, sans-serif';
+  ctx.font = '140px "Black Ops One", sans-serif';
   const texto = seg > 0 ? String(seg) : '¡PELEA!';
-  const color = seg > 0 ? '#fbbf24' : '#4ade80';
+  const color = seg > 0 ? '#fff7a1' : '#9dffd4';
   ctx.shadowColor = color; ctx.shadowBlur = 50;
   ctx.fillStyle = color;
   ctx.strokeStyle = '#000'; ctx.lineWidth = 10;
@@ -350,16 +356,16 @@ function drawPausa() {
   ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, W, H);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '900 80px Segoe UI, sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.shadowColor = '#4ade80'; ctx.shadowBlur = 30;
+   ctx.font = '80px "Black Ops One", sans-serif';
+  ctx.fillStyle = '#f5f0ff';
+  ctx.shadowColor = '#9dffd4'; ctx.shadowBlur = 30;
   ctx.fillText('PAUSA', W/2, H/2 - 40);
   ctx.shadowBlur = 0;
-  ctx.font = 'bold 20px Segoe UI, sans-serif';
-  ctx.fillStyle = '#4ade80';
-  ctx.fillText('P — Continuar', W/2, H/2 + 30);
-  ctx.fillStyle = '#f87171';
-  ctx.fillText('R — Reiniciar', W/2, H/2 + 65);
+  ctx.font = '12px "Press Start 2P", monospace';
+  ctx.fillStyle = '#9dffd4';
+  ctx.fillText('P — CONTINUAR', W/2, H/2 + 30);
+  ctx.fillStyle = '#ff7a7a';
+  ctx.fillText('R — REINICIAR', W/2, H/2 + 65);
 }
 
 // ============================================================
