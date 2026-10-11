@@ -290,6 +290,7 @@ function roguelikeEmpezarPiso() {
     bossWarningTimer = 120;
     mostrarAvisoElite();
     } else {
+   } else {
     run.esBossPiso = false;
     run.esBossPisoFinal = false;
     run.esElitePiso = false;
@@ -298,6 +299,8 @@ function roguelikeEmpezarPiso() {
     countdownTimer = 180;
     if (typeof playMusic === 'function') playMusic('combat');
   }
+  // Reset del combo call al empezar piso
+  if (typeof ultimoComboLlamado !== 'undefined') ultimoComboLlamado = 0;
 }
 
 // ============================================================
