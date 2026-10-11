@@ -106,6 +106,12 @@ class Fighter {
     this.estado = 'attacking';
     this.estadoTimer = mv.startup + mv.active + mv.recovery;
     this.yaGolpeo = false;
+    // Squash de anticipación: el cuerpo se comprime al iniciar ataques fuertes
+    if (mv.startup >= 6) {
+      this.escalaY = 1.12;
+      this.escalaX = 0.9;
+    }
+    
     if (estabaCancelando) {
       spawnParticles(this.x, this.y - 40, 8, this.accent, 4, 0.1);
     }
@@ -501,6 +507,14 @@ class Fighter {
       }
       this.meter = Math.min(100, this.meter + mv.meterGain * 0.5 * (1 + (this.bonuses ? this.bonuses.medidorPct : 0)));
       oponente.meter = Math.min(100, oponente.meter + 4);
+     
+      // Squash al conectar: el cuerpo se estira un poco
+    this.escalaY = 0.92;
+    this.escalaX = 1.1;
+    if (oponente) {
+      oponente.escalaY = 0.85;
+      oponente.escalaX = 1.15;
+    }
       const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
       spawnParticles(hx, hy, 8, '#93c5fd', 4, 0.3);
       spawnRing(hx, hy, '#93c5fd', 35);
@@ -783,6 +797,30 @@ class Fighter {
       }
     }
 
+    // Afterimages del dash
+    if (this.dashTimer > 0) {
+      const numAfter = 4;
+      for (let i = 1; i <= numAfter; i++) {
+        const alpha = (1 - i / numAfter) * 0.4 * (this.dashTimer / 12);
+        if (alpha <= 0) continue;
+        const offsetX = -this.dashDir * i * 12;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(this.x + offsetX, this.y);
+        ctx.scale(this.facing, 1);
+        ctx.shadowColor = this.accent;
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(0, -78, 11, 0, Math.PI*2); ctx.fill();
+        ctx.fillRect(-3, -68, 6, 38);
+        ctx.fillRect(-15, -60, 12, 5);
+        ctx.fillRect(3, -60, 12, 5);
+        ctx.fillRect(-12, -30, 8, 30);
+        ctx.fillRect(4, -30, 8, 30);
+        ctx.restore();
+      }
+    }
+    
     ctx.save();
     ctx.translate(this.x + this.anticipacionOffset * this.facing, this.y);
     ctx.save();
@@ -800,7 +838,13 @@ class Fighter {
     ctx.shadowColor = accentColor;
     ctx.shadowBlur = flash ? 25 : (this.meter >= 100 ? 20 + Math.sin(t*0.15)*8 : 8);
 
-    const crouchOffset = (this.crouching || this.estado === 'crouch') ? 15 : 0;
+       const estaAgachado = this.crouching || this.estado === 'crouch';
+    const crouchOffset = estaAgachado ? 22 : 0;
+    // Si está agachado, comprime el cuerpo
+    if (estaAgachado) {
+      this.escalaY = Math.min(this.escalaY, 0.78);
+      this.escalaX = Math.max(this.escalaX, 1.15);
+    }
     const headBob = Math.sin(t*0.08) * 1.2;
 
     let legFront = 0, legBack = 0, armFront = 0, armBack = 0;
