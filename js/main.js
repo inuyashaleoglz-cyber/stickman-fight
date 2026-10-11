@@ -20,6 +20,7 @@ let comboTopeEstaPartida = 0;
 let modoActual = 'rapido';
 let bossWarningTimer = 0;
 let impactFrameTimer = 0;
+let shakeDirX = 0;
 let koZoom = 1;
 let koZoomTarget = 1;
 let koFocusX = 0;
@@ -468,6 +469,9 @@ function update() {
     ia.actualizar(jugador, false);
 
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
+        // Decay del shake direccional
+    shakeDirX *= 0.85;
+    if (Math.abs(shakeDirX) < 0.05) shakeDirX = 0;
     if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
       run.comboTope = jugador.combo;
     }
@@ -591,9 +595,10 @@ function update() {
 //  RENDER
 // ============================================================
 function render() {
-  ctx.save();
+ctx.save();
   if (shakeAmount > 0)
-    ctx.translate((Math.random()-0.5)*shakeAmount, (Math.random()-0.5)*shakeAmount);
+    ctx.translate((Math.random()-0.5)*shakeAmount + shakeDirX * shakeAmount * 0.5,
+                  (Math.random()-0.5)*shakeAmount);
 
   if (impactFrameTimer > 0) {
     ctx.fillStyle = 'rgba(255,255,255,' + (impactFrameTimer / 4 * 0.35) + ')';
