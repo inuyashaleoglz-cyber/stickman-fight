@@ -87,7 +87,7 @@ const SCENARIOS = [
 ];
 
 // ============================================================
-//  DIFICULTADES DE LA IA (pesadilla suavizada)
+//  DIFICULTADES DE LA IA
 // ============================================================
 const AIS = {
   facil:     {name:'FÁCIL',     color:'#4ade80', reaction:26, aggression:0.35, blockChance:0.25, dodgeChance:0.15, speedMult:0.80, dmgMult:0.75, prediction:0.0, specialUse:0.3},
@@ -110,10 +110,9 @@ const MOVES = {
 };
 
 // ============================================================
-//  MEJORAS CON MAXSTACK
+//  MEJORAS
 // ============================================================
 const MEJORAS = [
-  // ---- COMUNES ----
   { id:'daño1', maxStack:5, name:'FILO AFILADO', icon:'🗡️', rarity:'comun',
     desc:'+15% de daño con todos tus ataques.',
     apply: function(b){ b.dañoPct += 0.15; } },
@@ -136,7 +135,6 @@ const MEJORAS = [
     desc:'Empiezas cada pelea con 20% del medidor lleno.',
     apply: function(b){ b.medidorInicial += 0.20; } },
 
-  // ---- RARAS ----
   { id:'critico', maxStack:3, name:'GOLPE CRÍTICO', icon:'🎯', rarity:'rara',
     desc:'15% de probabilidad de hacer daño x2.',
     apply: function(b){ b.critChance += 0.15; } },
@@ -165,7 +163,6 @@ const MEJORAS = [
     desc:'Tus golpes aplican sangrado: 1 daño/segundo durante 3s.',
     apply: function(b){ b.sangradoPct += 1; } },
 
-  // ---- ÉPICAS ----
   { id:'dash1', maxStack:3, name:'SOMBRA FANTASMA', icon:'👻', rarity:'epica',
     desc:'Tu dash es más largo. Cada stack suma +8 frames de invulnerabilidad.',
     apply: function(b){ b.dashPct += 0.5; b.dashInvuln += 1; } },
@@ -173,7 +170,6 @@ const MEJORAS = [
     desc:'Reflejas el 15% del daño bloqueado al atacante.',
     apply: function(b){ b.reflejoPct += 0.15; } },
 
-  // ---- ROCKY ----
   { id:'rocky1', maxStack:2, name:'MURO ETERNO', icon:'🏔️', rarity:'rara', soloPara:'rocky',
     desc:'+20% de reducción de daño adicional.',
     apply: function(b){ b.defensaPct += 0.20; } },
@@ -184,7 +180,6 @@ const MEJORAS = [
     desc:'+60 de vida máxima y +10% defensa.',
     apply: function(b){ b.vidaMax += 60; b.defensaPct += 0.10; } },
 
-  // ---- BLAZE ----
   { id:'blaze1', maxStack:2, name:'VIENTO CORTANTE', icon:'🌪️', rarity:'rara', soloPara:'blaze',
     desc:'Tu dash es 50% más rápido y hace daño al pasar.',
     apply: function(b){ b.dashPct += 0.5; b.dashDaño += 4; } },
@@ -195,7 +190,6 @@ const MEJORAS = [
     desc:'+25% velocidad y +20% daño en combos de 3 o más.',
     apply: function(b){ b.velocidadPct += 0.25; b.velocidadComboPct += 0.20; } },
 
-  // ---- TITAN ----
   { id:'titan1', maxStack:3, name:'PIEL DE ROCA', icon:'🛡️', rarity:'rara', soloPara:'titan',
     desc:'+80 de vida máxima.',
     apply: function(b){ b.vidaMax += 80; } },
@@ -206,7 +200,6 @@ const MEJORAS = [
     desc:'+60% daño con puñetazos y +30% daño con patadas.',
     apply: function(b){ b.punchPct += 0.60; b.kickPct += 0.30; } },
 
-  // ---- SHADOW ----
   { id:'shadow1', maxStack:2, name:'HOJA SOMBRÍA', icon:'🗡️', rarity:'rara', soloPara:'shadow',
     desc:'+30% de daño con puñetazos y patadas.',
     apply: function(b){ b.punchPct += 0.30; b.kickPct += 0.30; } },
@@ -217,7 +210,6 @@ const MEJORAS = [
     desc:'Al usar especial, dejas un clon que golpea. Cada stack = +1 clon.',
     apply: function(b){ b.clonEspecial += 1; } },
 
-  // ---- FROST ----
   { id:'frost1', maxStack:2, name:'ESCARCHA PROFUNDA', icon:'❄️', rarity:'rara', soloPara:'frost',
     desc:'Tus golpes ralentizan al rival el doble.',
     apply: function(b){ b.slowPct += 1; } },
@@ -228,7 +220,6 @@ const MEJORAS = [
     desc:'Tus especiales congelan más tiempo. Cada stack = +2 segundos.',
     apply: function(b){ b.congelarEspecial += 1; } },
 
-  // ---- BOLT ----
   { id:'bolt1', maxStack:2, name:'RAYO CONTINUO', icon:'⚡', rarity:'rara', soloPara:'bolt',
     desc:'Sobrecarga cae cada 3 golpes en vez de cada 4.',
     apply: function(b){ b.rayoFrecuencia = Math.max(2, b.rayoFrecuencia - 1); } },
@@ -239,7 +230,6 @@ const MEJORAS = [
     desc:'+25% de probabilidad de crítico.',
     apply: function(b){ b.critChance += 0.25; } },
 
-  // ---- PHOENIX ----
   { id:'phoenix1', maxStack:3, name:'FUEGO SAGRADO', icon:'🔥', rarity:'rara', soloPara:'phoenix',
     desc:'+2 de regeneración por segundo.',
     apply: function(b){ b.regeneracion += 2; } },
@@ -349,7 +339,7 @@ function esPisoEvento(piso)  {
 }
 
 // ============================================================
-//  BONUSES VACÍOS (booleanas convertidas a números)
+//  BONUSES VACÍOS
 // ============================================================
 function bonusesVacios() {
   return {
@@ -396,12 +386,16 @@ const keys = {};
 const justPressed = {};
 
 document.addEventListener('keydown', function(e) {
-  initAudio();
+  if (typeof initAudio === 'function') initAudio();
   const k = e.key.toLowerCase();
   if (!keys[k]) justPressed[k] = true;
   keys[k] = true;
   if (k === 'r' && typeof iniciarPartida === 'function') iniciarPartida();
   if (k === 'p' && typeof togglePausa === 'function') togglePausa();
+  // Cualquier tecla salta el aviso de boss/elite
+  if (typeof estadoJuego !== 'undefined' && estadoJuego === 'boss_warning' && typeof saltarAvisoBoss === 'function') {
+    if (k !== 'm') saltarAvisoBoss();
+  }
   if (['arrowleft','arrowright','arrowup','arrowdown',' '].indexOf(k) !== -1) e.preventDefault();
 });
 document.addEventListener('keyup', function(e) {
