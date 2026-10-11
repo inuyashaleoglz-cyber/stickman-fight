@@ -13,7 +13,7 @@ let sfxGain = null;
 let ambientGain = null;
 
 let muted = false;
-let volumenMaestro = 0.7;
+let volumenMaestro = 0.9;
 let musicaActual = null;
 let musicaTimer = null;
 let ambientActual = null;
@@ -32,15 +32,15 @@ function initAudio() {
     masterGain.connect(audioCtx.destination);
 
     musicGain = audioCtx.createGain();
-    musicGain.gain.value = 0.3;
+    musicGain.gain.value = 0.38;
     musicGain.connect(masterGain);
 
     sfxGain = audioCtx.createGain();
-    sfxGain.gain.value = 1.0;
+    sfxGain.gain.value = 1.20;
     sfxGain.connect(masterGain);
 
     ambientGain = audioCtx.createGain();
-    ambientGain.gain.value = 0.18;
+    ambientGain.gain.value = 0.22;
     ambientGain.connect(masterGain);
   } catch (e) {
     console.warn('Audio no disponible:', e);
@@ -594,7 +594,7 @@ function playMusic(pista) {
   if (musicGain) {
     musicGain.gain.cancelScheduledValues(audioCtx.currentTime);
     musicGain.gain.setValueAtTime(0, audioCtx.currentTime);
-    musicGain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.8);
+    musicGain.gain.linearRampToValueAtTime(0.38, audioCtx.currentTime + 0.8);
   }
 
   const tocarSiguiente = function() {
