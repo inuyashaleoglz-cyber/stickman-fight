@@ -11,9 +11,9 @@ function factorPiso(piso) {
 }
 
 function dificultadDelPiso(piso) {
-  if (piso <= 5) return 'facil';
-  if (piso <= 12) return 'normal';
-  if (piso <= 22) return 'dificil';
+  if (piso <= 6) return 'facil';
+  if (piso <= 14) return 'normal';
+  if (piso <= 28) return 'dificil';
   return 'pesadilla';
 }
 
