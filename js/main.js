@@ -413,6 +413,39 @@ function update() {
 
   if (!jugador || !ia) return;
 
+  // ════════════════════════════════════════════════════════════
+  //  RED DE SEGURIDAD DEL AVISO DE BOSS/ELITE
+  //  Tres capas para que sea IMPOSIBLE que quede pillado:
+  //  1. Si el estado NO es boss_warning pero el overlay está
+  //     visible → cerrarlo (algo cambió el estado sin cerrar).
+  //  2. Si el estado ES boss_warning pero ya pasaron más de
+  //     2.5s (tiempo real, no frames) → cerrar y pasar a countdown.
+  // ════════════════════════════════════════════════════════════
+  var _overlayAviso = document.getElementById('bossWarningOverlay');
+  if (_overlayAviso && _overlayAviso.classList.contains('active')) {
+    if (estadoJuego !== 'boss_warning') {
+      // Capa 1: estado cambió pero overlay sigue visible
+      _overlayAviso.classList.remove('active');
+      _overlayAviso.classList.remove('final');
+      _overlayAviso.classList.remove('elite');
+      window.__avisoStartTime = null;
+      if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
+    } else {
+      // Capa 2: seguimos en boss_warning — verificar por tiempo real
+      if (!window.__avisoStartTime) window.__avisoStartTime = Date.now();
+      if (Date.now() - window.__avisoStartTime > 2500) {
+        _overlayAviso.classList.remove('active');
+        _overlayAviso.classList.remove('final');
+        _overlayAviso.classList.remove('elite');
+        estadoJuego = 'countdown';
+        countdownTimer = 180;
+        clearPresses();
+        window.__avisoStartTime = null;
+        if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
+      }
+    }
+  }
+  
   if (mensajeTimer > 0) mensajeTimer--;
 
   if (pausado) return;
