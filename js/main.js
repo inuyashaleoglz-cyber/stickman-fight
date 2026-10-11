@@ -17,10 +17,10 @@ let time = 0;
 let pausado = false;
 let escenarioActual = 0;
 let comboTopeEstaPartida = 0;
-let modoActual = 'rapido'; // 'rapido' | 'roguelike'
+let modoActual = 'rapido';
 
 // ============================================================
-//  CICLO DE PARTIDA (DUELO RÁPIDO)
+//  CICLO DE PARTIDA
 // ============================================================
 function iniciarRonda() {
   jugador.reset(200, 1);
@@ -38,15 +38,13 @@ function iniciarRonda() {
 }
 
 function iniciarPartida() {
-  // Si estamos en roguelike y hay un run activo, reiniciar el run
   if (modoActual === 'roguelike') {
     roguelikeIniciar(personajeJugador.id);
     return;
   }
-  // Duelo rápido normal
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
-  personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; }); // sin bonuses
+  personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; });
   jugador = new Fighter(personajeJugador, 200, 1, false);
   ia = new Fighter(personajeIA, W - 200, -1, true);
   victoriasJugador = 0; victoriasIA = 0;
@@ -266,7 +264,6 @@ function drawHUD() {
   drawHealthBar(W - 30 - barW, y, barW, barH, ia.salud, ia.saludGhost, ia.maxHealth,
     ia.color, true, ia.name, ia.meter, ia.def.specialName, null);
 
-  // En duelo rápido mostramos rondas ganadas; en roguelike mostramos el piso
   if (modoActual === 'rapido') {
     for (let i = 0; i < ROUNDS_TO_WIN; i++) {
       const px = 30 + barW + 25 + i*26;
@@ -278,12 +275,6 @@ function drawHUD() {
       ctx.fillStyle = i < victoriasIA ? ia.color : 'rgba(255,255,255,0.12)';
       ctx.fill(); ctx.strokeStyle = ia.color; ctx.lineWidth = 2; ctx.stroke();
     }
-  } else if (modoActual === 'roguelike' && run) {
-    // Mostrar progreso de pisos
-    ctx.font = 'bold 13px Segoe UI, sans-serif';
-    ctx.fillStyle = '#fbbf24';
-    ctx.textAlign = 'center';
-    ctx.fillText('PISO ' + run.piso + ' / ' + MAX_PISO, W/2, y + barH + 26);
   }
 
   ctx.font = 'bold 22px Segoe UI, sans-serif';
@@ -297,20 +288,28 @@ function drawHUD() {
   ctx.font = 'bold 10px Segoe UI, sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.fillText(SCENARIOS[escenarioActual].name, W/2, H - 15);
-}
 
-  // Mostrar sinergias activas si estamos en roguelike
+  // Sinergias activas (roguelike)
   if (modoActual === 'roguelike' && run && run.bonuses.sinergiasActivas.length > 0) {
     ctx.font = 'bold 11px Segoe UI, sans-serif';
     ctx.fillStyle = '#d8b4fe';
     ctx.textAlign = 'left';
-    let texto = '✦ Sinergias: ';
+    let texto = '✦ ';
     run.bonuses.sinergiasActivas.forEach(function(id, idx) {
       const s = SINERGIAS.find(function(x){ return x.id === id; });
       if (s) texto += s.icon + ' ' + s.nombre + (idx < run.bonuses.sinergiasActivas.length - 1 ? ' · ' : '');
     });
     ctx.fillText(texto, 20, H - 15);
   }
+
+  // Oro (roguelike)
+  if (modoActual === 'roguelike' && run) {
+    ctx.font = 'bold 14px Segoe UI, sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.textAlign = 'right';
+    ctx.fillText('💰 ' + run.oro, W - 20, y + barH + 55);
+  }
+}
 
 // ============================================================
 //  MENSAJES Y PAUSA
@@ -377,7 +376,7 @@ function update() {
   if (pausado) return;
 
   if (estadoJuego === 'evento') return;
- // NUEVO: aviso de boss
+
   if (estadoJuego === 'boss_warning') {
     window.__bossWarningTimer--;
     if (window.__bossWarningTimer <= 0) {
@@ -388,7 +387,7 @@ function update() {
     }
     return;
   }
-  
+
   if (estadoJuego === 'countdown') {
     countdownTimer--;
     if (countdownTimer % 60 === 0 && countdownTimer > 0) SFX.count();
@@ -403,7 +402,11 @@ function update() {
     ia.actualizar(jugador, false);
 
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
-        // NUEVO: cambio de fase del boss final
+    if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
+      run.comboTope = jugador.combo;
+    }
+
+    // Cambio de fase del boss final
     if (modoActual === 'roguelike' && run && run.esBossPisoFinal) {
       const hpPct = ia.salud / ia.maxHealth;
       if (ia.faseActual === undefined) ia.faseActual = 1;
@@ -424,7 +427,7 @@ function update() {
         ia.color = '#ef4444'; ia.accent = '#dc2626';
         ia.def.dmgMult *= 1.20;
         ia.def.speed *= 1.10;
-        ia.maxHealth += 40; // un poco más de vida
+        ia.maxHealth += 40;
         ia.salud += 40;
         ia.saludGhost += 40;
         spawnParticles(ia.x, ia.y - 55, 60, '#ef4444', 16);
@@ -434,9 +437,6 @@ function update() {
         mensajeGrande = '¡FASE 3!';
         mensajeTimer = 90;
       }
-    }
-    if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
-      run.comboTope = jugador.combo;
     }
 
     if (jugador.salud <= 0 || ia.salud <= 0) {
@@ -453,7 +453,6 @@ function update() {
       const dead = jugador.salud <= 0 ? jugador : ia;
       spawnParticles(dead.x, dead.y - 55, 40, dead.accent, 12);
 
-      // En roguelike, guardar resultado para procesarlo al terminar el roundover
       if (modoActual === 'roguelike') {
         window.__roguelikeGanador = jugadorGano ? 'jugador' : 'ia';
       }
@@ -469,7 +468,6 @@ function update() {
       if (f.saludGhost > f.salud) f.saludGhost -= 0.6;
     });
     if (roundTimer <= 0) {
-      // MODO ROGUELIKE: procesar fin de piso
       if (modoActual === 'roguelike' && run && run.activo) {
         const ganador = window.__roguelikeGanador;
         window.__roguelikeGanador = null;
@@ -482,7 +480,6 @@ function update() {
         return;
       }
 
-      // DUELO RÁPIDO: flujo normal
       if (victoriasJugador >= ROUNDS_TO_WIN || victoriasIA >= ROUNDS_TO_WIN) {
         estadoJuego = 'matchover';
         mensajeGrande = victoriasJugador >= ROUNDS_TO_WIN ? '¡GANASTE!' : 'PERDISTE';
@@ -522,6 +519,12 @@ function render() {
 
   if (jugador) jugador.dibujar(time);
   if (ia) ia.dibujar(time);
+
+  drawRings();
+  drawProjectiles();
+  drawLightning();
+  drawParticles();
+  drawDamageNumbers();
 
   ctx.restore();
 
@@ -619,7 +622,7 @@ function renderRecords() {
     const favName = fav ? fav.name : '—';
     let texto = '🏆 Duelos ganados: ' + r.victorias + '  ·  Mejor combo: ' + r.mejorCombo;
     if (r.mejorPisoRoguelike > 0) {
-      texto += '  ·  Roguelike: piso ' + r.mejorPisoRoguelike + '/30';
+      texto += '  ·  Roguelike: piso ' + r.mejorPisoRoguelike;
     }
     if (r.roguelikesGanados > 0) {
       texto += '  ·  🎖️ ' + r.roguelikesGanados + ' conquistas';
@@ -632,21 +635,18 @@ function setupMenu() {
   renderMenu();
   renderRecords();
 
-  // Selector de modo
   document.getElementById('modeRow').addEventListener('click', function(e) {
     if (e.target.classList.contains('mode-btn')) {
       const btns = document.querySelectorAll('.mode-btn');
       for (let i = 0; i < btns.length; i++) btns[i].classList.remove('selected');
       e.target.classList.add('selected');
       modoActual = e.target.dataset.mode;
-      // Ocultar/mostrar dificultad (en roguelike la controla el piso)
       const diffRow = document.getElementById('diffRow');
       diffRow.style.opacity = (modoActual === 'roguelike') ? '0.3' : '1';
       diffRow.style.pointerEvents = (modoActual === 'roguelike') ? 'none' : 'auto';
     }
   });
 
-  // Selector de dificultad
   document.getElementById('diffRow').addEventListener('click', function(e) {
     if (e.target.classList.contains('diff-btn')) {
       const btns = document.querySelectorAll('.diff-btn');
@@ -656,7 +656,6 @@ function setupMenu() {
     }
   });
 
-  // Botón empezar
   document.getElementById('startBtn').addEventListener('click', function() {
     initAudio();
     document.getElementById('menu').style.display = 'none';
@@ -664,12 +663,10 @@ function setupMenu() {
     iniciarPartida();
   });
 
-  // Botón volver
   document.getElementById('backBtn').addEventListener('click', function() {
     volverAlMenu();
   });
 
-  // Botones de overlay
   document.getElementById('goMenuBtn').addEventListener('click', function() {
     document.getElementById('gameOverOverlay').classList.remove('active');
     volverAlMenu();
@@ -678,6 +675,14 @@ function setupMenu() {
     document.getElementById('victoryOverlay').classList.remove('active');
     volverAlMenu();
   });
+
+  // Botones de conquista y tienda
+  const btnCont = document.getElementById('conquistaContinuarBtn');
+  const btnRet = document.getElementById('conquistaRetirarseBtn');
+  const btnSalir = document.getElementById('tiendaSalirBtn');
+  if (btnCont) btnCont.addEventListener('click', function() { conquistaContinuar(); });
+  if (btnRet) btnRet.addEventListener('click', function() { conquistaRetirarse(); });
+  if (btnSalir) btnSalir.addEventListener('click', function() { salirTienda(); });
 }
 
 function volverAlMenu() {
@@ -687,7 +692,12 @@ function volverAlMenu() {
   document.getElementById('gameOverOverlay').classList.remove('active');
   document.getElementById('victoryOverlay').classList.remove('active');
   document.getElementById('bossWarningOverlay').classList.remove('active');
+  document.getElementById('bossWarningOverlay').classList.remove('final');
+  document.getElementById('bossWarningOverlay').classList.remove('elite');
   document.getElementById('descansoOverlay').classList.remove('active');
+  document.getElementById('conquistaOverlay').classList.remove('active');
+  document.getElementById('tiendaOverlay').classList.remove('active');
+  document.getElementById('buildOverlay').classList.remove('active');
   jugador = null;
   ia = null;
   run = null;
