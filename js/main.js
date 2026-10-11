@@ -536,7 +536,15 @@ function update() {
   if (estadoJuego === 'countdown') {
     countdownTimer--;
     if (countdownTimer % 60 === 0 && countdownTimer > 0 && typeof SFX !== 'undefined') SFX.count();
-    if (countdownTimer <= 0) { estadoJuego = 'fighting'; if (typeof SFX !== 'undefined') SFX.fight(); }
+    // Disparar "¡Fight!" medio segundo ANTES de empezar (para que llegue a tiempo)
+    if (countdownTimer === 30 && !window.__fightAnunciado) {
+      window.__fightAnunciado = true;
+      if (typeof SFX !== 'undefined') SFX.fight();
+    }
+    if (countdownTimer <= 0) {
+      estadoJuego = 'fighting';
+      window.__fightAnunciado = false;
+    }
     jugador.facing = ia.x > jugador.x ? 1 : -1;
     ia.facing = jugador.x > ia.x ? 1 : -1;
     return;
@@ -976,6 +984,10 @@ function volverAlMenu() {
 // ============================================================
 setupMenu();
 loop();
+// Precalentar el sistema de voz para que no haya delay la primera vez
+setTimeout(function() {
+  if (typeof precalentarVoz === 'function') precalentarVoz();
+}, 1000);
 
 document.addEventListener('keydown', function arrancarMusicaOnce() {
   if (typeof initAudio === 'function') initAudio();
