@@ -271,7 +271,7 @@ function roguelikeEmpezarPiso() {
 
   clearPresses();
 
-   if (rivalDef.__esBoss) {
+  if (rivalDef.__esBoss) {
     run.esBossPiso = true;
     run.esBossPisoFinal = rivalDef.__esBossFinal;
     run.esElitePiso = false;
@@ -289,8 +289,7 @@ function roguelikeEmpezarPiso() {
     estadoJuego = 'boss_warning';
     bossWarningTimer = 120;
     mostrarAvisoElite();
-    } 
-    } else {
+  } else {
     run.esBossPiso = false;
     run.esBossPisoFinal = false;
     run.esElitePiso = false;
@@ -299,9 +298,7 @@ function roguelikeEmpezarPiso() {
     countdownTimer = 180;
     if (typeof playMusic === 'function') playMusic('combat');
   }
-  if (typeof ultimoComboLlamado !== 'undefined') ultimoComboLlamado = 0;
-}
-  // Reset del combo call al empezar piso
+
   if (typeof ultimoComboLlamado !== 'undefined') ultimoComboLlamado = 0;
 }
 
