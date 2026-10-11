@@ -77,15 +77,17 @@ function togglePausa() {
 }
 
 function saltarAvisoBoss() {
-  if (estadoJuego !== 'boss_warning') return;
   if (window.__avisoTimer) {
     clearTimeout(window.__avisoTimer);
     window.__avisoTimer = null;
   }
+  window.__avisoStartTime = null;
   ocultarAvisoBoss();
-  estadoJuego = 'countdown';
-  countdownTimer = 180;
-  clearPresses();
+  if (estadoJuego === 'boss_warning') {
+    estadoJuego = 'countdown';
+    countdownTimer = 180;
+    clearPresses();
+  }
 }
 
 // ============================================================
