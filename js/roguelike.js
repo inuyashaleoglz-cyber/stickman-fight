@@ -321,15 +321,18 @@ function mostrarAvisoBoss(rivalDef) {
     icon.textContent = '⚠';
   }
   overlay.classList.add('active');
-  // Cerrar el aviso SIEMPRE después de 2 segundos, sin depender del loop
+  // Marcar tiempo real de inicio para el cierre por update()
+  window.__avisoStartTime = Date.now();
+  // Capa 1: setTimeout por si update() falla
   if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
   window.__avisoTimer = setTimeout(function() {
+    ocultarAvisoBoss();
     if (estadoJuego === 'boss_warning') {
-      ocultarAvisoBoss();
       estadoJuego = 'countdown';
       countdownTimer = 180;
       clearPresses();
     }
+    window.__avisoStartTime = null;
   }, 2000);
 }
 
@@ -344,15 +347,18 @@ function mostrarAvisoElite() {
   sub.textContent = '★ RECOMPENSA ÉPICA ASEGURADA ★';
   icon.textContent = '⚔';
   overlay.classList.add('active');
-  // Cerrar el aviso SIEMPRE después de 2 segundos, sin depender del loop
+  // Marcar tiempo real de inicio para el cierre por update()
+  window.__avisoStartTime = Date.now();
+  // Capa 1: setTimeout por si update() falla
   if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
   window.__avisoTimer = setTimeout(function() {
+    ocultarAvisoBoss();
     if (estadoJuego === 'boss_warning') {
-      ocultarAvisoBoss();
       estadoJuego = 'countdown';
       countdownTimer = 180;
       clearPresses();
     }
+    window.__avisoStartTime = null;
   }, 2000);
 }
 
