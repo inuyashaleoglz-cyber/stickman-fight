@@ -38,6 +38,8 @@ class Fighter {
     this.breathingFase = Math.random() * Math.PI * 2;
     this.followThrough = 0;
     this.antAnticipo = 0;
+    this.poseVictoria = false;
+    this.poseVictoriaFase = 0;
     this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
@@ -76,6 +78,8 @@ class Fighter {
     this.anticipacionOffset = 0;
     this.followThrough = 0;
     this.antAnticipo = 0;
+    this.poseVictoria = false;
+    this.poseVictoriaFase = 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
@@ -457,6 +461,11 @@ class Fighter {
       this.escalaX += Math.sin(ft * Math.PI * 3) * 0.05;
       this.escalaY -= Math.sin(ft * Math.PI * 3) * 0.05;
     }
+     
+    // Pose de victoria
+    if (this.poseVictoria) {
+      this.poseVictoriaFase += 0.08;
+    }
   }
   
   intentarGolpe(oponente, mv, nombre) {
@@ -819,6 +828,12 @@ class Fighter {
         ctx.globalAlpha = this.clonTimer / 40 * 0.6;
         ctx.translate(this.x + offsetX, this.y);
         ctx.scale(this.facing * this.escalaX, this.escalaY);
+            // Pose de victoria: brazos al aire
+    if (this.poseVictoria) {
+      const pv = this.poseVictoriaFase;
+      const salto = Math.abs(Math.sin(pv)) * -8;
+      ctx.translate(0, salto);
+    }
         ctx.shadowColor = this.accent;
         ctx.shadowBlur = 20;
         ctx.fillStyle = this.color;
@@ -943,7 +958,10 @@ class Fighter {
     ctx.strokeStyle = bodyColor;
     ctx.beginPath();
     ctx.moveTo(0, -60 + crouchOffset);
-    if (this.estado === 'block') {
+    if (this.poseVictoria) {
+      // Un brazo al aire
+      ctx.quadraticCurveTo(10, -85, 5, -105);
+    } else if (this.estado === 'block') {
       ctx.quadraticCurveTo(14, -55 + crouchOffset, 12, -40 + crouchOffset);
     } else if (moveType === 'uppercut') {
       const ang = -0.5 - upperExtend * 1.5;
