@@ -256,6 +256,16 @@ function roguelikeEmpezarPiso() {
   projectiles.length = 0;
   lightningBolts.length = 0;
 
+  if (typeof koZoom !== 'undefined') {
+    koZoom = 1;
+    koZoomTarget = 1;
+    koFocusX = 0;
+    koFocusY = 0;
+    slowmoFactor = 1;
+    slowmoTimer = 0;
+    impactFrameTimer = 0;
+  }
+
   clearPresses();
 
   if (rivalDef.__esBoss) {
