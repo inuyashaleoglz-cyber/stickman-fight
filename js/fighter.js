@@ -219,7 +219,7 @@ class Fighter {
       if (this.puedeActuar()) {
         if (keys['a']) mover -= 1;
         if (keys['d']) mover += 1;
-        if (consumePress('a')) {
+              if (consumePress('a')) {
           const now = performance.now();
           if (now - this.lastATap < 260) {
             this.dashDir = -1;
@@ -227,7 +227,6 @@ class Fighter {
             if (this.bonuses && this.bonuses.dashInvuln > 0) {
               const extra = (this.bonuses.dashInvuln - 1) * 8 + (this.bonuses.dashInvulnExtra || 0);
               this.invulnerable = Math.max(this.invulnerable, 10 + extra);
-            }
             }
             SFX.dash();
             spawnParticles(this.x, this.y - 30, 8, this.color, 4, 0.1);
@@ -239,7 +238,7 @@ class Fighter {
           if (now - this.lastDTap < 260) {
             this.dashDir = 1;
             this.dashTimer = 12;
-           if (this.bonuses && this.bonuses.dashInvuln > 0) {
+            if (this.bonuses && this.bonuses.dashInvuln > 0) {
               const extra = (this.bonuses.dashInvuln - 1) * 8 + (this.bonuses.dashInvulnExtra || 0);
               this.invulnerable = Math.max(this.invulnerable, 10 + extra);
             }
