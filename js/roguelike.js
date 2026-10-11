@@ -278,7 +278,7 @@ function roguelikeEmpezarPiso() {
     run.eleccionesRestantes = 0;
     ia.faseActual = 1;
     estadoJuego = 'boss_warning';
-    window.__bossWarningTimer = 150;
+    bossWarningTimer = 120;
     mostrarAvisoBoss(rivalDef);
     if (typeof playMusic === 'function') playMusic('boss');
   } else if (rivalDef.__esElite) {
@@ -287,7 +287,7 @@ function roguelikeEmpezarPiso() {
     run.esElitePiso = true;
     run.eleccionesRestantes = 0;
     estadoJuego = 'boss_warning';
-    window.__bossWarningTimer = 120;
+    bossWarningTimer = 120;
     mostrarAvisoElite();
     } else {
     run.esBossPiso = false;
