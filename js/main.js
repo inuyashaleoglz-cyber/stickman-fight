@@ -832,6 +832,8 @@ function volverAlMenu() {
   if (typeof playMusic === 'function') playMusic('menu');
   if (typeof stopAmbient === 'function') stopAmbient();
   bossWarningTimer = 0;
+    window.__avisoStartTime = null;
+  if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
   document.getElementById('gameScreen').classList.remove('active');
   document.getElementById('menu').style.display = 'flex';
   document.getElementById('upgradeOverlay').classList.remove('active');
