@@ -3,6 +3,29 @@
 // ============================================================
 let run = null;
 
+function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
+  const personajeActual = run ? run.personajeId : null;
+  const disponibles = MEJORAS.filter(function(m) {
+    if (!m.soloPara) return true;
+    return m.soloPara === personajeActual;
+  }).filter(function(m) { return m.rarity === rarezaForzada; });
+
+  if (disponibles.length < cantidad) {
+    return elegirMejorasAleatorias(cantidad);
+  }
+
+  const elegidas = [];
+  const usadas = {};
+  for (let i = 0; i < cantidad; i++) {
+    const pool = disponibles.filter(function(m){ return !usadas[m.id]; });
+    if (pool.length === 0) break;
+    const e = pool[Math.floor(Math.random() * pool.length)];
+    elegidas.push(e);
+    usadas[e.id] = true;
+  }
+  return elegidas;
+}
+
 function crearRun(personajeId) {
   return {
     activo: true,
@@ -637,31 +660,6 @@ document.addEventListener('keydown', function(e) {
     e.preventDefault();
     toggleBuildOverlay();
   }
-  // ============================================================
-//  ELECCIÓN DE MEJORAS CON RAREZA FORZADA (elite / tesoro)
-// ============================================================
-function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
-  const personajeActual = run ? run.personajeId : null;
-  const disponibles = MEJORAS.filter(function(m) {
-    if (!m.soloPara) return true;
-    return m.soloPara === personajeActual;
-  }).filter(function(m) { return m.rarity === rarezaForzada; });
-
-  if (disponibles.length < cantidad) {
-    return elegirMejorasAleatorias(cantidad);
-  }
-
-  const elegidas = [];
-  const usadas = {};
-  for (let i = 0; i < cantidad; i++) {
-    const pool = disponibles.filter(function(m){ return !usadas[m.id]; });
-    if (pool.length === 0) break;
-    const e = pool[Math.floor(Math.random() * pool.length)];
-    elegidas.push(e);
-    usadas[e.id] = true;
-  }
-  return elegidas;
-}
 
 // ============================================================
 //  EVENTOS (descanso / tesoro)
