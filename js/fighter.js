@@ -192,20 +192,20 @@ class Fighter {
     }
 
     // NUEVO: clon (mejora épica de Shadow)
-    if (this.clonTimer > 0) {
+       if (this.clonTimer > 0) {
       this.clonTimer--;
       if (this.clonTimer === 20 && oponente) {
         const numClones = this.clonesActivos || 1;
+        const self = this;
+        const target = oponente;
         for (let ci = 0; ci < numClones; ci++) {
-          setTimeout((function(self, o){
-            return function(){
-              if (o && o.salud > 0) {
-                o.recibirDaño(10, self, 'clon');
-                spawnParticles(o.x, o.y - 50, 15, self.color, 8);
-                spawnRing(o.x, o.y - 50, self.accent, 80);
-              }
-            };
-          })(this, oponente), ci * 150);
+          setTimeout(function() {
+            if (target && target.salud > 0) {
+              target.recibirDaño(10, self, 'clon');
+              spawnParticles(target.x, target.y - 50, 15, self.color, 8);
+              spawnRing(target.x, target.y - 50, self.accent, 80);
+            }
+          }, ci * 150);
         }
       }
     }
