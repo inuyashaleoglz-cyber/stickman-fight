@@ -196,20 +196,14 @@ class Fighter {
       this.clonTimer--;
       if (this.clonTimer === 20 && oponente) {
         const numClones = this.clonesActivos || 1;
-        const self = this;
-        const target = oponente;
-        for (let ci = 0; ci < numClones; ci++) {
-          setTimeout(function() {
-            if (target && target.salud > 0) {
-              target.recibirDaño(10, self, 'clon');
-              spawnParticles(target.x, target.y - 50, 15, self.color, 8);
-              spawnRing(target.x, target.y - 50, self.accent, 80);
-            }
-          }, ci * 150);
-        }
+        const dañoTotal = 10 * numClones;
+        oponente.recibirDaño(dañoTotal, this, 'clon');
+        spawnParticles(oponente.x, oponente.y - 50, 15 + numClones * 5, this.color, 8);
+        spawnRing(oponente.x, oponente.y - 50, this.accent, 80);
+        spawnDamageNumber(oponente.x, oponente.y - 100, '×' + numClones, this.accent, true);
       }
     }
-
+    
     if (this.slowTimer > 0) this.slowTimer--;
     if (this.superArmorFrames > 0) this.superArmorFrames--;
     if (this.dashTimer > 0) this.dashTimer--;
