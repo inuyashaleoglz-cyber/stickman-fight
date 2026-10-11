@@ -20,17 +20,16 @@ let comboTopeEstaPartida = 0;
 let modoActual = 'rapido';
 let bossWarningTimer = 0;
 let impactFrameTimer = 0;
-let shakeDirX = 0;
 let koZoom = 1;
 let koZoomTarget = 1;
 let koFocusX = 0;
 let koFocusY = 0;
 let slowmoFactor = 1;
 let slowmoTimer = 0;
+
 // VS Screen
 let vsScreenTimer = 0;
-let vsP1Color = '#4ade80';
-let vsP2Color = '#f87171';
+let vsScreenYaMostrado = false;
 // PERFECT
 let dañoRecibidoRonda1 = 0;
 let dañoRecibidoRonda2 = 0;
@@ -61,7 +60,6 @@ function iniciarRonda() {
   pausado = false;
   clearPresses();
 
-  // VS Screen solo en la primera ronda del duelo rápido
   if (modoActual === 'rapido' && victoriasJugador === 0 && victoriasIA === 0 && !vsScreenYaMostrado) {
     mostrarVSScreen();
     vsScreenYaMostrado = true;
@@ -70,8 +68,6 @@ function iniciarRonda() {
   estadoJuego = 'countdown';
   countdownTimer = 180;
 }
-
-let vsScreenYaMostrado = false;
 
 function mostrarVSScreen() {
   const overlay = document.getElementById('vsScreenOverlay');
@@ -93,7 +89,6 @@ function mostrarVSScreen() {
   estadoJuego = 'vs_screen';
   vsScreenTimer = 90;
 
-  // Sonido de aparición
   if (typeof SFX !== 'undefined' && SFX.upgrade) SFX.upgrade();
 }
 
@@ -106,8 +101,12 @@ function cerrarVSScreen() {
   }
 }
 
+function saltarVSScreen() {
+  if (estadoJuego !== 'vs_screen') return;
+  cerrarVSScreen();
+}
+
 function portraitSVG(color) {
-  // Retrato simplificado del stickman (cabeza + hombros)
   return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
     '<circle cx="50" cy="38" r="20" fill="' + color + '" stroke="#0a0618" stroke-width="3"/>' +
     '<line x1="30" y1="38" x2="42" y2="38" stroke="#0a0618" stroke-width="4" stroke-linecap="round"/>' +
@@ -122,7 +121,7 @@ function mostrarComboCall(texto) {
   if (!el || !txt) return;
   txt.textContent = texto;
   el.classList.remove('active');
-  void el.offsetWidth; // forzar reinicio de animación
+  void el.offsetWidth;
   el.classList.add('active');
   if (typeof ANNOUNCER_SFX !== 'undefined') ANNOUNCER_SFX.combo();
 }
@@ -136,7 +135,6 @@ function iniciarPartida() {
     roguelikeIniciar(personajeJugador.id);
     return;
   }
- 
   if (typeof playMusic === 'function') playMusic('combat');
   const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
   personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
@@ -152,27 +150,10 @@ function iniciarPartida() {
   if (typeof playAmbient === 'function') playAmbient(SCENARIOS[escenarioActual].id);
   iniciarRonda();
 }
-  if (typeof playMusic === 'function') playMusic('combat');
-  const disponibles = CHARACTERS.filter(function(c) { return c.id !== personajeJugador.id; });
-  personajeIA = disponibles[Math.floor(Math.random() * disponibles.length)];
-  personajeJugador = CHARACTERS.find(function(c){ return c.id === personajeJugador.id; });
-  jugador = new Fighter(personajeJugador, 200, 1, false);
-  ia = new Fighter(personajeIA, W - 200, -1, true);
-  victoriasJugador = 0; victoriasIA = 0;
-  comboTopeEstaPartida = 0;
-  escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
-  if (typeof playAmbient === 'function') playAmbient(SCENARIOS[escenarioActual].id);
-  iniciarRonda();
-}
 
 function togglePausa() {
   if (estadoJuego !== 'fighting' && estadoJuego !== 'countdown') return;
   pausado = !pausado;
-}
-
-function saltarVSScreen() {
-  if (estadoJuego !== 'vs_screen') return;
-  cerrarVSScreen();
 }
 
 function saltarAvisoBoss() {
@@ -182,15 +163,6 @@ function saltarAvisoBoss() {
   }
   window.__avisoStartTime = null;
   ocultarAvisoBoss();
-
-    if (estadoJuego === 'vs_screen') {
-    vsScreenTimer--;
-    if (vsScreenTimer <= 0) {
-      cerrarVSScreen();
-    }
-    return;
-  }
-
   if (estadoJuego === 'boss_warning') {
     estadoJuego = 'countdown';
     countdownTimer = 180;
@@ -523,25 +495,16 @@ function update() {
 
   if (!jugador || !ia) return;
 
-  // ════════════════════════════════════════════════════════════
-  //  RED DE SEGURIDAD DEL AVISO DE BOSS/ELITE
-  //  Tres capas para que sea IMPOSIBLE que quede pillado:
-  //  1. Si el estado NO es boss_warning pero el overlay está
-  //     visible → cerrarlo (algo cambió el estado sin cerrar).
-  //  2. Si el estado ES boss_warning pero ya pasaron más de
-  //     2.5s (tiempo real, no frames) → cerrar y pasar a countdown.
-  // ════════════════════════════════════════════════════════════
+  // Red de seguridad del aviso de boss/elite
   var _overlayAviso = document.getElementById('bossWarningOverlay');
   if (_overlayAviso && _overlayAviso.classList.contains('active')) {
     if (estadoJuego !== 'boss_warning') {
-      // Capa 1: estado cambió pero overlay sigue visible
       _overlayAviso.classList.remove('active');
       _overlayAviso.classList.remove('final');
       _overlayAviso.classList.remove('elite');
       window.__avisoStartTime = null;
       if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
     } else {
-      // Capa 2: seguimos en boss_warning — verificar por tiempo real
       if (!window.__avisoStartTime) window.__avisoStartTime = Date.now();
       if (Date.now() - window.__avisoStartTime > 2500) {
         _overlayAviso.classList.remove('active');
@@ -555,12 +518,20 @@ function update() {
       }
     }
   }
-  
+
   if (mensajeTimer > 0) mensajeTimer--;
 
   if (pausado) return;
 
   if (estadoJuego === 'evento') return;
+
+  if (estadoJuego === 'vs_screen') {
+    vsScreenTimer--;
+    if (vsScreenTimer <= 0) {
+      cerrarVSScreen();
+    }
+    return;
+  }
 
   if (estadoJuego === 'countdown') {
     countdownTimer--;
@@ -576,7 +547,10 @@ function update() {
     ia.actualizar(jugador, false);
 
     if (jugador.combo > comboTopeEstaPartida) comboTopeEstaPartida = jugador.combo;
-        
+    if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
+      run.comboTope = jugador.combo;
+    }
+
     // Combo calls
     if (jugador.combo >= 5 && jugador.combo !== ultimoComboLlamado) {
       if (jugador.combo === 5) mostrarComboCall('¡COMBO!');
@@ -586,11 +560,11 @@ function update() {
       ultimoComboLlamado = jugador.combo;
     }
     if (jugador.combo === 0) ultimoComboLlamado = 0;
-        // Decay del shake direccional
-    shakeDirX *= 0.85;
-    if (Math.abs(shakeDirX) < 0.05) shakeDirX = 0;
-    if (modoActual === 'roguelike' && run && jugador.combo > run.comboTope) {
-      run.comboTope = jugador.combo;
+
+    // Decay del shake direccional
+    if (typeof shakeDirX !== 'undefined') {
+      shakeDirX *= 0.85;
+      if (Math.abs(shakeDirX) < 0.05) shakeDirX = 0;
     }
 
     // Cambio de fase del boss final
@@ -639,19 +613,19 @@ function update() {
 
       const jugadorGano = ia.salud <= 0 && jugador.salud > 0;
 
+      // Guardar si recibió daño en la ronda (para PERFECT)
+      if (modoActual === 'rapido') {
+        if (victoriasJugador === 0 && victoriasIA === 0) dañoRecibidoRonda1 = jugador.maxHealth - jugador.salud;
+        else dañoRecibidoRonda2 = jugador.maxHealth - jugador.salud;
+      }
+
       if (jugador.salud <= 0 && ia.salud <= 0) mensajeGrande = 'EMPATE';
       else if (jugador.salud <= 0) { mensajeGrande = 'K.O.'; victoriasIA++; }
       else { mensajeGrande = '¡K.O.!'; victoriasJugador++; }
       mensajeTimer = 170;
       const dead = jugador.salud <= 0 ? jugador : ia;
       spawnParticles(dead.x, dead.y - 55, 40, dead.accent, 12);
-      
-      // Guardar si recibió daño en la ronda para PERFECT
-      if (modoActual === 'rapido') {
-        if (victoriasJugador === 0 && victoriasIA === 0) dañoRecibidoRonda1 = jugador.maxHealth - jugador.salud;
-        else dañoRecibidoRonda2 = jugador.maxHealth - jugador.salud;
-      }
-      
+
       if (modoActual === 'roguelike') {
         window.__roguelikeGanador = jugadorGano ? 'jugador' : 'ia';
       }
@@ -662,7 +636,6 @@ function update() {
   if (estadoJuego === 'roundover') {
     roundTimer--;
 
-    // Configurar cámara de KO (una vez)
     if (roundTimer === 169) {
       const dead = jugador.salud <= 0 ? jugador : ia;
       koZoomTarget = 1.35;
@@ -702,7 +675,6 @@ function update() {
       if (victoriasJugador >= ROUNDS_TO_WIN || victoriasIA >= ROUNDS_TO_WIN) {
         estadoJuego = 'matchover';
         const ganaste = victoriasJugador >= ROUNDS_TO_WIN;
-        // PERFECT: ganar 2-0 sin recibir daño
         esPerfectRound = ganaste && victoriasIA === 0 &&
                          dañoRecibidoRonda1 === 0 && dañoRecibidoRonda2 === 0;
         if (esPerfectRound) {
@@ -728,9 +700,9 @@ function update() {
 //  RENDER
 // ============================================================
 function render() {
-ctx.save();
+  ctx.save();
   if (shakeAmount > 0)
-    ctx.translate((Math.random()-0.5)*shakeAmount + shakeDirX * shakeAmount * 0.5,
+    ctx.translate((Math.random()-0.5)*shakeAmount + (typeof shakeDirX !== 'undefined' ? shakeDirX * shakeAmount * 0.5 : 0),
                   (Math.random()-0.5)*shakeAmount);
 
   if (impactFrameTimer > 0) {
@@ -738,7 +710,6 @@ ctx.save();
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Zoom cinematográfico del KO
   if (koZoom !== 1 || koFocusX !== 0) {
     ctx.save();
     ctx.translate(koFocusX, koFocusY);
@@ -748,7 +719,6 @@ ctx.save();
 
   drawBackground();
 
-  // Aura dorada del elite
   if (ia && ia.def && ia.def.__esElite && ia.salud > 0) {
     ctx.save();
     const pulse = 0.6 + Math.sin(time * 0.15) * 0.4;
@@ -772,7 +742,6 @@ ctx.save();
   drawParticles();
   drawDamageNumbers();
 
-  // Cerrar zoom cinematográfico
   if (koZoom !== 1 || koFocusX !== 0) {
     ctx.restore();
   }
@@ -801,8 +770,7 @@ ctx.save();
     ctx.fillText('R PARA REJUGAR', W/2, H/2 + 90);
     ctx.fillText('O VUELVE AL MENÚ', W/2, H/2 + 120);
   }
-  
-  // Cartel PERFECT en matchover
+
   if (estadoJuego === 'matchover' && esPerfectRound) {
     ctx.save();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -810,11 +778,11 @@ ctx.save();
     ctx.shadowColor = '#fff7a1'; ctx.shadowBlur = 60;
     ctx.fillStyle = '#fff7a1';
     ctx.strokeStyle = '#0a0618'; ctx.lineWidth = 10;
-    ctx.strokeText('¡PERFECT!', W/2, H/2 - 100);
-    ctx.fillText('¡PERFECT!', W/2, H/2 - 100);
+    ctx.strokeText('¡PERFECT!', W/2, H/2 - 130);
+    ctx.fillText('¡PERFECT!', W/2, H/2 - 130);
     ctx.restore();
   }
-  
+
   if (pausado) drawPausa();
 }
 
@@ -822,16 +790,8 @@ ctx.save();
 //  LOOP
 // ============================================================
 function loop() {
-  try {
-    update();
-  } catch (e) {
-    console.error('[LOOP] Error en update:', e);
-  }
-  try {
-    render();
-  } catch (e) {
-    console.error('[LOOP] Error en render:', e);
-  }
+  try { update(); } catch (e) { console.error('[LOOP] Error en update:', e); }
+  try { render(); } catch (e) { console.error('[LOOP] Error en render:', e); }
   requestAnimationFrame(loop);
 }
 
@@ -890,15 +850,9 @@ function renderRecords() {
   if (r.victorias === 0 && r.mejorPisoRoguelike === 0) {
     el.textContent = '🏆 Sin récords todavía. ¡Gana tu primera pelea!';
   } else {
-    const fav = r.personajeFav ? CHARACTERS.find(function(c){return c.id === r.personajeFav;}) : null;
-    const favName = fav ? fav.name : '—';
     let texto = '🏆 Duelos: ' + r.victorias + ' · Combo: ' + r.mejorCombo;
-    if (r.mejorPisoRoguelike > 0) {
-      texto += ' · Roguelike: piso ' + r.mejorPisoRoguelike;
-    }
-    if (r.roguelikesGanados > 0) {
-      texto += ' · 🎖️ ' + r.roguelikesGanados + ' conquistas';
-    }
+    if (r.mejorPisoRoguelike > 0) texto += ' · Roguelike: piso ' + r.mejorPisoRoguelike;
+    if (r.roguelikesGanados > 0) texto += ' · 🎖️ ' + r.roguelikesGanados + ' conquistas';
     el.textContent = texto;
   }
 }
@@ -958,7 +912,6 @@ function setupMenu() {
     volverAlMenu();
   });
 
-  // Botones de conquista y tienda
   const btnCont = document.getElementById('conquistaContinuarBtn');
   const btnRet = document.getElementById('conquistaRetirarseBtn');
   const btnSalir = document.getElementById('tiendaSalirBtn');
@@ -966,24 +919,22 @@ function setupMenu() {
   if (btnRet) btnRet.addEventListener('click', function() { conquistaRetirarse(); });
   if (btnSalir) btnSalir.addEventListener('click', function() { salirTienda(); });
 
-  // Botón de saltar el aviso de boss/elite
   const btnSkip = document.getElementById('bossWarningSkipBtn');
   if (btnSkip) btnSkip.addEventListener('click', function() { saltarAvisoBoss(); });
 
-  // Clic en el overlay de aviso también salta
   const overlayBoss = document.getElementById('bossWarningOverlay');
   if (overlayBoss) {
     overlayBoss.addEventListener('click', function(e) {
       if (e.target.id === 'bossWarningOverlay') saltarAvisoBoss();
     });
   }
-}
-  
-// VS Screen se puede saltar
+
   const overlayVS = document.getElementById('vsScreenOverlay');
   if (overlayVS) {
     overlayVS.addEventListener('click', function() { saltarVSScreen(); });
   }
+}
+
 function volverAlMenu() {
   if (typeof playMusic === 'function') playMusic('menu');
   if (typeof stopAmbient === 'function') stopAmbient();
@@ -995,8 +946,6 @@ function volverAlMenu() {
   if (overlayVS) overlayVS.classList.remove('active');
   const overlayCombo = document.getElementById('comboCallOverlay');
   if (overlayCombo) overlayCombo.classList.remove('active');
-    window.__avisoStartTime = null;
-  if (window.__avisoTimer) { clearTimeout(window.__avisoTimer); window.__avisoTimer = null; }
   document.getElementById('gameScreen').classList.remove('active');
   document.getElementById('menu').style.display = 'flex';
   document.getElementById('upgradeOverlay').classList.remove('active');
