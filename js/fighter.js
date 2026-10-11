@@ -34,6 +34,10 @@ class Fighter {
     this.escalaX = 1;
     this.escalaY = 1;
     this.anticipacionOffset = 0;
+    // 4C: animaciones avanzadas
+    this.breathingFase = Math.random() * Math.PI * 2;
+    this.followThrough = 0;
+    this.antAnticipo = 0;
     this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
@@ -70,6 +74,8 @@ class Fighter {
     this.escalaX = 1;
     this.escalaY = 1;
     this.anticipacionOffset = 0;
+    this.followThrough = 0;
+    this.antAnticipo = 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
@@ -108,8 +114,10 @@ class Fighter {
     this.yaGolpeo = false;
     // Squash de anticipación: el cuerpo se comprime al iniciar ataques fuertes
     if (mv.startup >= 6) {
-      this.escalaY = 1.12;
-      this.escalaX = 0.9;
+      this.escalaY = 1.15;
+      this.escalaX = 0.85;
+      // Flash de color en anticipación
+      spawnParticles(this.x, this.y - 50, 6, this.accent, 4, 0.05);
     }
     
     if (estabaCancelando) {
@@ -418,7 +426,7 @@ class Fighter {
       this.saludGhost -= Math.max(0.4, (this.saludGhost - this.salud) * 0.06);
     else this.saludGhost = this.salud;
 
-    // Recuperación suave de escala (squash & stretch)
+      // Recuperación suave de escala (squash & stretch)
     this.escalaX += (1 - this.escalaX) * 0.18;
     this.escalaY += (1 - this.escalaY) * 0.18;
 
@@ -426,12 +434,28 @@ class Fighter {
     if (this.estado === 'attacking' && this.moveActual && this.moveActual.frame > 0) {
       const st = this.moveActual.data.startup;
       if (st >= 6 && this.moveActual.frame <= st * 0.55) {
-        this.anticipacionOffset = -5;
+        this.anticipacionOffset = -6;
       } else {
         this.anticipacionOffset *= 0.65;
       }
     } else {
       this.anticipacionOffset *= 0.65;
+    }
+
+    // 4C: Breathing idle — respiración sutil
+    this.breathingFase += 0.03;
+    if (this.estado === 'idle' && this.enSuelo && !this.crouching) {
+      const breath = Math.sin(this.breathingFase) * 0.015;
+      this.escalaY += breath;
+      this.escalaX -= breath * 0.6;
+    }
+
+    // 4C: Follow-through — rebote al recibir impacto
+    if (this.followThrough > 0) {
+      this.followThrough--;
+      const ft = this.followThrough / 20;
+      this.escalaX += Math.sin(ft * Math.PI * 3) * 0.05;
+      this.escalaY -= Math.sin(ft * Math.PI * 3) * 0.05;
     }
   }
   
@@ -508,12 +532,21 @@ class Fighter {
       this.meter = Math.min(100, this.meter + mv.meterGain * 0.5 * (1 + (this.bonuses ? this.bonuses.medidorPct : 0)));
       oponente.meter = Math.min(100, oponente.meter + 4);
      
-      // Squash al conectar: el cuerpo se estira un poco
-    this.escalaY = 0.92;
-    this.escalaX = 1.1;
+       // Squash al conectar: el cuerpo se estira un poco
+    this.escalaY = 0.88;
+    this.escalaX = 1.15;
     if (oponente) {
-      oponente.escalaY = 0.85;
-      oponente.escalaX = 1.15;
+      const fueCritico = esCritico || mv.special;
+      if (fueCritico) {
+        // Efecto plátano: deformación fuerte en críticos
+        oponente.escalaY = 0.7;
+        oponente.escalaX = 1.4;
+        oponente.followThrough = 20;
+      } else {
+        oponente.escalaY = 0.82;
+        oponente.escalaX = 1.2;
+        oponente.followThrough = 12;
+      }
     }
       const hx = (this.x + oponente.x) / 2, hy = oponente.y - 55;
       spawnParticles(hx, hy, 8, '#93c5fd', 4, 0.3);
