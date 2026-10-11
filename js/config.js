@@ -390,47 +390,6 @@ function bonusesVacios() {
 }
 
 // ============================================================
-//  AUDIO
-// ============================================================
-let audioCtx = null;
-function initAudio() {
-  if (!audioCtx) {
-    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
-  }
-}
-function beep(f1, f2, dur, type, vol) {
-  if (!audioCtx) return;
-  type = type || 'square'; vol = vol || 0.07;
-  try {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(f1, audioCtx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), audioCtx.currentTime + dur);
-    g.gain.setValueAtTime(vol, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime + dur);
-  } catch(e){}
-}
-const SFX = {
-  punch:   function(){ beep(450, 180, 0.06, 'sawtooth', 0.05); },
-  kick:    function(){ beep(320, 130, 0.09, 'sawtooth', 0.07); },
-  upper:   function(){ beep(220, 500, 0.12, 'square', 0.09); },
-  hit:     function(){ beep(240, 60, 0.13, 'square', 0.10); },
-  block:   function(){ beep(1000, 500, 0.07, 'triangle', 0.07); },
-  special: function(){ beep(180, 1200, 0.4, 'sawtooth', 0.14); },
-  ko:      function(){ beep(180, 40, 0.5, 'sawtooth', 0.16); },
-  count:   function(){ beep(560, 560, 0.11, 'sine', 0.07); },
-  fight:   function(){ beep(300, 900, 0.35, 'square', 0.13); },
-  jump:    function(){ beep(600, 900, 0.06, 'sine', 0.04); },
-  dash:    function(){ beep(700, 1100, 0.08, 'triangle', 0.05); },
-  upgrade: function(){ beep(600, 1400, 0.35, 'triangle', 0.12); },
-  defeat:  function(){ beep(300, 80, 0.8, 'sawtooth', 0.15); },
-  victory: function(){ beep(500, 1500, 0.8, 'square', 0.15); }
-};
-
-// ============================================================
 //  ENTRADA
 // ============================================================
 const keys = {};
