@@ -212,6 +212,7 @@ const SFX = {
     setTimeout(function(){ tono(660, 990, 0.4, 'square', 0.13); }, 220);
     tono(165, 330, 0.5, 'sawtooth', 0.09);
     if (typeof ANNOUNCER_SFX !== 'undefined') setTimeout(function(){ ANNOUNCER_SFX.fight(); }, 100);
+    if (typeof reverbArcade === 'function') reverbArcade(0.3, 0.06);
   },
 
   // SALTO: corto y aireado
@@ -671,6 +672,25 @@ document.addEventListener('keydown', function(e) {
     console.log('Audio ' + (m ? 'silenciado' : 'activado'));
   }
 });
+
+// Efecto de eco arcade para la voz (no siempre soportado por speechSynthesis,
+// pero el eco lo añadimos por Web Audio API sobre las SFX del combate)
+function reverbArcade(duracion, volumen) {
+  if (!audioCtx) return;
+  try {
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 200;
+    g.gain.setValueAtTime(volumen || 0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + duracion);
+    o.connect(g).connect(masterGain);
+    o.start(t);
+    o.stop(t + duracion);
+  } catch (e) {}
+}
+
 // ============================================================
 //  ANNOUNCER (voces arcade)
 // ============================================================
