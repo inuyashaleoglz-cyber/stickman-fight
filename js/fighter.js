@@ -40,6 +40,10 @@ class Fighter {
     this.antAnticipo = 0;
     this.poseVictoria = false;
     this.poseVictoriaFase = 0;
+     // Afijos dinámicos
+    this.caoticoTimer = 0;
+    this.regenAfijoAccum = 0;
+    this.__explosivoDisparado = false;
     this.reviviresRestantes = (this.bonuses && this.bonuses.revivir) || 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
@@ -80,6 +84,9 @@ class Fighter {
     this.antAnticipo = 0;
     this.poseVictoria = false;
     this.poseVictoriaFase = 0;
+    this.caoticoTimer = 0;
+    this.regenAfijoAccum = 0;
+    this.__explosivoDisparado = false;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
@@ -454,13 +461,44 @@ class Fighter {
       this.escalaX -= breath * 0.6;
     }
 
-    // 4C: Follow-through — rebote al recibir impacto
+     // 4C: Follow-through — rebote al recibir impacto
     if (this.followThrough > 0) {
       this.followThrough--;
       const ft = this.followThrough / 20;
       this.escalaX += Math.sin(ft * Math.PI * 3) * 0.05;
       this.escalaY -= Math.sin(ft * Math.PI * 3) * 0.05;
     }
+
+    // ════════════════════════════════════════════════════════
+    //  AFIJOS DINÁMICOS DEL RIVAL
+    // ════════════════════════════════════════════════════════
+
+    // REGENERADOR: +2 vida/segundo
+    if (this.def && this.def.__afijo_regenerador && this.salud > 0 && this.salud < this.maxHealth) {
+      this.regenAfijoAccum += 2 / 60;
+      if (this.regenAfijoAccum >= 1) {
+        const cur = Math.floor(this.regenAfijoAccum);
+        this.salud = Math.min(this.maxHealth, this.salud + cur);
+        this.regenAfijoAccum -= cur;
+      }
+    }
+
+    // CAÓTICO: cada 10 segundos se teletransporta
+    if (this.def && this.def.__afijo_caotico && this.enSuelo && this.salud > 0) {
+      this.caoticoTimer++;
+      if (this.caoticoTimer >= 600) {
+        this.caoticoTimer = 0;
+        spawnParticles(this.x, this.y - 50, 20, '#d0b7ff', 10);
+        spawnRing(this.x, this.y - 50, '#d0b7ff', 100);
+        const rango = W - WALL_PAD * 2;
+        const nuevaX = WALL_PAD + Math.random() * rango;
+        this.x = nuevaX;
+        if (oponente) this.facing = oponente.x > this.x ? 1 : -1;
+        spawnParticles(this.x, this.y - 50, 20, '#d0b7ff', 10);
+        spawnRing(this.x, this.y - 50, '#d0b7ff', 100);
+      }
+    }
+  }
      
     // Pose de victoria
     if (this.poseVictoria) {
@@ -503,7 +541,7 @@ class Fighter {
     if (this.esIA) daño *= AIS[dificultad].dmgMult;
     daño = Math.round(daño);
 
-    // Crítico
+     // Crítico
     let esCritico = false;
     if (this.bonuses && this.bonuses.critChance > 0) {
       if (Math.random() < this.bonuses.critChance) {
@@ -511,7 +549,23 @@ class Fighter {
         esCritico = true;
       }
     }
-    // NUEVO: crítico garantizado en combos altos
+    // Afijo PRECISO del rival: +15% crítico
+    if (this.def && this.def.__afijoCrit && Math.random() < this.def.__afijoCrit) {
+      daño *= 2;
+      esCritico = true;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  AFIJO ESPECTRAL del defensor: 20% de esquivar
+    // ════════════════════════════════════════════════════════
+    if (oponente.def && oponente.def.__afijo_espectral && !oponente.blocking && Math.random() < 0.20) {
+      spawnDamageNumber(oponente.x, oponente.y - 100, 'MISS', '#d0b7ff', true);
+      spawnParticles(oponente.x, oponente.y - 50, 10, '#d0b7ff', 6);
+      this.yaGolpeo = true;
+      return;
+    }
+    
+// NUEVO: crítico garantizado en combos altos
        if (this.bonuses && this.bonuses.critGarantizadoCombo > 0) {
       const umbral = Math.max(2, 6 - this.bonuses.critGarantizadoCombo);
       if (this.combo >= umbral && !esCritico) {
@@ -572,9 +626,31 @@ class Fighter {
     if (oponente.bonuses && oponente.bonuses.defensaPct > 0) {
       dmgFinal = Math.round(dmgFinal * (1 - oponente.bonuses.defensaPct));
     }
+    // Afijo BLINDADO del defensor: -25% daño
+    if (oponente.def && oponente.def.__afijo_blindado) {
+      dmgFinal = Math.round(dmgFinal * 0.75);
+    }
 
     oponente.salud -= dmgFinal;
     if (oponente.salud < 0) oponente.salud = 0;
+
+    // ════════════════════════════════════════════════════════
+    //  AFIJOS DEL ATACANTE
+    // ════════════════════════════════════════════════════════
+
+    // VAMPÍRICO: cura 15% del daño hecho
+    if (this.def && this.def.__afijo_vampirico && this.salud > 0) {
+      const cur = Math.max(1, Math.round(dmgFinal * 0.15));
+      this.salud = Math.min(this.maxHealth, this.salud + cur);
+      spawnDamageNumber(this.x, this.y - 120, '+' + cur, '#ef4444');
+    }
+
+    // CONGELANTE: ralentiza al defensor 1 segundo
+    if (this.def && this.def.__afijo_congelante && oponente) {
+      oponente.slowTimer = Math.max(oponente.slowTimer, 60);
+      spawnParticles(oponente.x, oponente.y - 30, 6, '#67e8f9', 4);
+      spawnRing(oponente.x, oponente.y - 30, '#67e8f9', 40);
+    }
 
     // Vampirismo
     if (this.bonuses && this.bonuses.vampirismo > 0 && this.salud > 0) {
@@ -706,7 +782,7 @@ class Fighter {
       this.combo = 0;
     }
 
-    const hx = this.x + (atacante ? Math.sign(this.x - atacante.x) * 15 : 0);
+      const hx = this.x + (atacante ? Math.sign(this.x - atacante.x) * 15 : 0);
     const hy = this.y - 55;
     spawnParticles(hx, hy, 14, this.accent, 7);
     spawnParticles(hx, hy, 6, '#fff', 5);
@@ -717,6 +793,35 @@ class Fighter {
     if (atacante) {
       atacante.combo++;
       atacante.comboTimer = 90;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  AFIJO REFLEJO: devuelve 20% del daño recibido
+    // ════════════════════════════════════════════════════════
+    if (this.def && this.def.__afijo_reflejo && atacante && !this.blocking) {
+      const reflejado = Math.max(1, Math.round(dañoFinal * 0.20));
+      atacante.salud -= reflejado;
+      if (atacante.salud < 0) atacante.salud = 0;
+      spawnDamageNumber(atacante.x, atacante.y - 120, '-' + reflejado, '#9de6ff', true);
+      spawnParticles(atacante.x, atacante.y - 50, 8, '#9de6ff', 5);
+      spawnRing(atacante.x, atacante.y - 50, '#9de6ff', 50);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  AFIJO EXPLOSIVO: al morir explota y hace daño
+    // ════════════════════════════════════════════════════════
+    if (this.def && this.def.__afijo_explosivo && this.salud <= 0 && !this.__explosivoDisparado) {
+      this.__explosivoDisparado = true;
+      if (atacante) {
+        const dmg = 18;
+        atacante.salud -= dmg;
+        if (atacante.salud < 0) atacante.salud = 0;
+        spawnParticles(this.x, this.y - 50, 40, '#ff9ecd', 12);
+        spawnRing(this.x, this.y - 50, '#ff9ecd', 220);
+        spawnDamageNumber(atacante.x, atacante.y - 120, '-' + dmg, '#ff9ecd', true);
+        shake(22);
+        if (typeof SFX !== 'undefined' && SFX.special) SFX.special();
+      }
     }
   }
 
