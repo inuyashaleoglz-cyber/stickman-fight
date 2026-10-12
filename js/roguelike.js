@@ -188,6 +188,15 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
   }
 
   def.__piso = piso;
+  // Asignar afijos según el piso
+  const afijos = elegirAfijosParaPiso(piso);
+  def.__afijos = afijos;
+  // Aplicar los afijos estáticos inmediatamente al def
+  afijos.forEach(function(afijo) {
+    if (afijo.tipo === 'estatico' && afijo.aplicarEstatico) {
+      afijo.aplicarEstatico(def);
+    }
+  });
   return def;
 }
 
