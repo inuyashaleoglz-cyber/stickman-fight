@@ -376,6 +376,33 @@ function drawHUD() {
   drawHealthBar(W - 30 - barW, y, barW, barH, ia.salud, ia.saludGhost, ia.maxHealth,
     ia.color, true, ia.name, ia.meter, ia.def.specialName, null);
 
+  // Mostrar afijos del rival (roguelike, piso 31+)
+  if (modoActual === 'roguelike' && ia && ia.def && ia.def.__afijos && ia.def.__afijos.length > 0) {
+    ctx.save();
+    ctx.textAlign = 'left';
+    const afijos = ia.def.__afijos;
+    const startX = W - 30 - barW;
+    const startY = y + barH + 40;
+    ctx.font = '10px "Press Start 2P", monospace';
+    // Iconos
+    let offsetX = 0;
+    afijos.forEach(function(afijo) {
+      ctx.fillStyle = afijo.color;
+      ctx.shadowColor = afijo.color;
+      ctx.shadowBlur = 10;
+      ctx.font = '20px sans-serif';
+      ctx.fillText(afijo.icono, startX + offsetX, startY);
+      offsetX += 30;
+    });
+    // Nombres debajo (si caben)
+    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.shadowBlur = 0;
+    const nombres = afijos.map(function(a){ return a.nombre; }).join(' · ');
+    ctx.fillText(nombres, startX, startY + 14);
+    ctx.restore();
+  }
+  
   if (modoActual === 'rapido') {
     for (let i = 0; i < ROUNDS_TO_WIN; i++) {
       const px = 30 + barW + 25 + i*26;
