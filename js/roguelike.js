@@ -324,7 +324,7 @@ function roguelikeEmpezarPiso() {
     run.eleccionesRestantes = 0;
     estadoJuego = 'boss_warning';
     bossWarningTimer = 120;
-    mostrarAvisoElite();
+    mostrarAvisoElite(rivalDef);
   } else {
     run.esBossPiso = false;
     run.esBossPisoFinal = false;
@@ -372,9 +372,20 @@ function mostrarAvisoBoss(rivalDef) {
     }
     window.__avisoStartTime = null;
   }, 2000);
+    // Mostrar afijos si los tiene
+  const sub2 = document.getElementById('bossWarningSub');
+  if (rivalDef.__afijos && rivalDef.__afijos.length > 0 && sub2) {
+    let texto = sub2.textContent;
+    texto += ' · ';
+    rivalDef.__afijos.forEach(function(a, i) {
+      texto += a.icono + ' ' + a.nombre + (i < rivalDef.__afijos.length - 1 ? ' · ' : '');
+    });
+    sub2.textContent = texto;
+    sub2.style.fontSize = '9px';
+  }
 }
 
-function mostrarAvisoElite() {
+function mostrarAvisoElite(rivalDef) {
   const overlay = document.getElementById('bossWarningOverlay');
   const title = document.getElementById('bossWarningTitle');
   const sub = document.getElementById('bossWarningSub');
@@ -398,6 +409,16 @@ function mostrarAvisoElite() {
     }
     window.__avisoStartTime = null;
   }, 2000);
+  const sub3 = document.getElementById('bossWarningSub');
+  if (rivalDef && rivalDef.__afijos && rivalDef.__afijos.length > 0 && sub3) {
+    let texto = sub3.textContent;
+    texto += ' · ';
+    rivalDef.__afijos.forEach(function(a, i) {
+      texto += a.icono + ' ' + a.nombre + (i < rivalDef.__afijos.length - 1 ? ' · ' : '');
+    });
+    sub3.textContent = texto;
+    sub3.style.fontSize = '9px';
+  }
 }
 
 function ocultarAvisoBoss() {
