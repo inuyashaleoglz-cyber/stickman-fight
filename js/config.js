@@ -342,8 +342,11 @@ function nombrePisoBoss(piso){
 
 function tipoDePiso(piso) {
   if (piso <= 0) return 'normal';
-  if (piso % 30 === 0) return 'boss_final';
-  if (piso % 15 === 0) return 'boss';
+  // Pisos especiales fijos (no se pueden saltar)
+  if (esBossFinal(piso) || esBossOculto(piso) || esBossReal(piso)) return 'boss_final';
+  if (esMiniBoss(piso)) return 'boss';
+  if (esJefeDeSeccion(piso)) return 'boss';
+  // Pisos variables
   if (piso % 7 === 0) return 'tienda';
   if (piso % 4 === 0) return 'elite';
   if (piso % 5 === 0) {
