@@ -24,7 +24,7 @@ function dificultadDelPiso(piso) {
 }
 
 // ============================================================
-//  ELECCIÓN DE MEJORAS (con maxStack)
+//  ELECCIÓN DE MEJORAS
 // ============================================================
 function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
   const personajeActual = run ? run.personajeId : null;
@@ -50,6 +50,11 @@ function elegirMejorasAleatoriasConRareza(cantidad, rarezaForzada) {
     const e = pool[Math.floor(Math.random() * pool.length)];
     elegidas.push(e);
     usadas[e.id] = true;
+  }
+  // Rellenar si faltan
+  while (elegidas.length < cantidad) {
+    const relleno = MEJORAS_RELLENO[Math.floor(Math.random() * MEJORAS_RELLENO.length)];
+    elegidas.push(relleno);
   }
   return elegidas;
 }
@@ -93,6 +98,12 @@ function elegirMejorasAleatorias(cantidad) {
     usadas[elegida.id] = true;
   }
 
+  // Si no hay suficientes mejoras únicas, rellenar con mejoras de relleno
+  while (elegidas.length < cantidad) {
+    const relleno = MEJORAS_RELLENO[Math.floor(Math.random() * MEJORAS_RELLENO.length)];
+    elegidas.push(relleno);
+  }
+
   return elegidas;
 }
 
@@ -132,7 +143,6 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
   if (esBossFinal(piso) || esBossOculto(piso) || esBossReal(piso)) {
     // Bosses mayores: usan el personaje especial BOSSES[0]
     def = JSON.parse(JSON.stringify(BOSSES[0]));
-    // Escalado especial según piso
     let factor = 1;
     if (esBossReal(piso)) factor = 1.0;
     if (esBossOculto(piso)) factor = 1.5;
@@ -144,36 +154,44 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     else if (esBossOculto(piso)) def.name = 'EL VACÍO';
     else def.name = 'SEÑOR DEL VACÍO';
   } else if (esPisoBoss(piso)) {
-
-       // Mini-boss (30, 60, 90, 120) o Jefe de Sección (15, 45, 75, 105, 135)
+    // Mini-boss (30, 60, 90, 120) o Jefe de Sección (15, 45, 75, 105, 135)
     const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
     if (esMiniBoss(piso)) {
-      // Mini-Boss: 2 fases, más fuerte
       def.maxHealth = Math.round(def.maxHealth * factor * 1.30);
-      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
-      def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
+      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.045) * 1.15;
+      def.speed = def.speed * (1 + (piso - 1) * 0.010) * 1.03;
+      if (piso >= 35) {
+        const p = piso - 35;
+        def.dmgMult *= (1 + p / 100 + Math.pow(p / 40, 2) * 0.4);
+      }
       def.name = 'MINI-BOSS ' + def.name;
       def.__esBoss = true; def.__esBossFinal = true; def.__esElite = false;
     } else {
-      // Jefe de Sección: más fuerte que elite pero sin multi-fase
       def.maxHealth = Math.round(def.maxHealth * factor * 1.15);
-      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.022) * 1.08;
-      def.speed = def.speed * (1 + (piso - 1) * 0.006) * 1.02;
+      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.040) * 1.10;
+      def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.02;
+      if (piso >= 35) {
+        const p = piso - 35;
+        def.dmgMult *= (1 + p / 100 + Math.pow(p / 40, 2) * 0.4);
+      }
       def.name = 'JEFE ' + def.name;
       def.__esBoss = true; def.__esBossFinal = false; def.__esElite = false;
     }
   } else if (tipo === 'elite') {
-    
     const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
     def.maxHealth = Math.round(def.maxHealth * factor * 1.20);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
-    def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.045) * 1.12;
+    def.speed = def.speed * (1 + (piso - 1) * 0.010) * 1.03;
+    if (piso >= 35) {
+      const p = piso - 35;
+      def.dmgMult *= (1 + p / 100 + Math.pow(p / 40, 2) * 0.4);
+    }
     def.name = '★ ' + def.name;
     def.__esBoss = false; def.__esBossFinal = false; def.__esElite = true;
   } else {
@@ -182,8 +200,12 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
     def.maxHealth = Math.round(def.maxHealth * factor);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025);
-    def.speed = def.speed * (1 + (piso - 1) * 0.008);
+    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.045);
+    def.speed = def.speed * (1 + (piso - 1) * 0.010);
+    if (piso >= 35) {
+      const p = piso - 35;
+      def.dmgMult *= (1 + p / 100 + Math.pow(p / 40, 2) * 0.4);
+    }
     def.__esBoss = false; def.__esBossFinal = false; def.__esElite = false;
   }
 
@@ -277,25 +299,15 @@ function roguelikeEmpezarPiso() {
   if (run.bonuses.medidorInicial > 0) {
     jugador.meter = Math.min(100, run.bonuses.medidorInicial * 100);
   }
-  // Inicializar revivires
   jugador.reviviresRestantes = run.bonuses.revivir || 0;
 
   victoriasJugador = 0;
   victoriasIA = 0;
   comboTopeEstaPartida = 0;
   escenarioActual = Math.floor(Math.random() * SCENARIOS.length);
-    if (typeof playAmbient === 'function') {
-    playAmbient(SCENARIOS[escenarioActual].id);
-  }
   mensajeGrande = '';
   mensajeTimer = 0;
   pausado = false;
-
-  particles.length = 0;
-  dmgNumbers.length = 0;
-  impactRings.length = 0;
-  projectiles.length = 0;
-  lightningBolts.length = 0;
 
   if (typeof koZoom !== 'undefined') {
     koZoom = 1;
@@ -306,6 +318,12 @@ function roguelikeEmpezarPiso() {
     slowmoTimer = 0;
     impactFrameTimer = 0;
   }
+
+  particles.length = 0;
+  dmgNumbers.length = 0;
+  impactRings.length = 0;
+  projectiles.length = 0;
+  lightningBolts.length = 0;
 
   clearPresses();
 
@@ -352,7 +370,7 @@ function mostrarAvisoBoss(rivalDef) {
   if (rivalDef.__esBossFinal) {
     overlay.classList.add('final');
     title.textContent = rivalDef.name;
-    sub.textContent = '⚡ JEFE FINAL · 3 FASES ⚡';
+    sub.textContent = '⚡ JEFE · MÚLTIPLES FASES ⚡';
     icon.textContent = '🔥';
   } else {
     overlay.classList.remove('final');
@@ -361,20 +379,8 @@ function mostrarAvisoBoss(rivalDef) {
     icon.textContent = '⚠';
   }
   overlay.classList.add('active');
-  // Marcar tiempo real de inicio para el cierre por update()
-  window.__avisoStartTime = Date.now();
-  // Capa 1: setTimeout por si update() falla
-  if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
-  window.__avisoTimer = setTimeout(function() {
-    ocultarAvisoBoss();
-    if (estadoJuego === 'boss_warning') {
-      estadoJuego = 'countdown';
-      countdownTimer = 180;
-      clearPresses();
-    }
-    window.__avisoStartTime = null;
-  }, 2000);
-    // Mostrar afijos si los tiene
+
+  // Mostrar afijos si los tiene
   const sub2 = document.getElementById('bossWarningSub');
   if (rivalDef.__afijos && rivalDef.__afijos.length > 0 && sub2) {
     let texto = sub2.textContent;
@@ -385,6 +391,19 @@ function mostrarAvisoBoss(rivalDef) {
     sub2.textContent = texto;
     sub2.style.fontSize = '9px';
   }
+
+  // Cerrar el aviso SIEMPRE después de 2 segundos
+  if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
+  window.__avisoStartTime = Date.now();
+  window.__avisoTimer = setTimeout(function() {
+    ocultarAvisoBoss();
+    if (estadoJuego === 'boss_warning') {
+      estadoJuego = 'countdown';
+      countdownTimer = 180;
+      clearPresses();
+    }
+    window.__avisoStartTime = null;
+  }, 2000);
 }
 
 function mostrarAvisoElite(rivalDef) {
@@ -398,19 +417,7 @@ function mostrarAvisoElite(rivalDef) {
   sub.textContent = '★ RECOMPENSA ÉPICA ASEGURADA ★';
   icon.textContent = '⚔';
   overlay.classList.add('active');
-  // Marcar tiempo real de inicio para el cierre por update()
-  window.__avisoStartTime = Date.now();
-  // Capa 1: setTimeout por si update() falla
-  if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
-  window.__avisoTimer = setTimeout(function() {
-    ocultarAvisoBoss();
-    if (estadoJuego === 'boss_warning') {
-      estadoJuego = 'countdown';
-      countdownTimer = 180;
-      clearPresses();
-    }
-    window.__avisoStartTime = null;
-  }, 2000);
+
   const sub3 = document.getElementById('bossWarningSub');
   if (rivalDef && rivalDef.__afijos && rivalDef.__afijos.length > 0 && sub3) {
     let texto = sub3.textContent;
@@ -421,6 +428,18 @@ function mostrarAvisoElite(rivalDef) {
     sub3.textContent = texto;
     sub3.style.fontSize = '9px';
   }
+
+  if (window.__avisoTimer) clearTimeout(window.__avisoTimer);
+  window.__avisoStartTime = Date.now();
+  window.__avisoTimer = setTimeout(function() {
+    ocultarAvisoBoss();
+    if (estadoJuego === 'boss_warning') {
+      estadoJuego = 'countdown';
+      countdownTimer = 180;
+      clearPresses();
+    }
+    window.__avisoStartTime = null;
+  }, 2000);
 }
 
 function ocultarAvisoBoss() {
@@ -445,14 +464,15 @@ function roguelikeAlTerminarPiso(ganador) {
 
   run.rivalesVencidos.push(run.piso);
 
-  let oroGanado = 10 + run.piso * 2;
+  // Oro por victoria (escala con piso)
+  let oroGanado = 10 + run.piso * 3;
   if (run.esElitePiso) oroGanado += 30;
   if (run.esBossPiso) oroGanado += 60;
   run.oro += oroGanado;
 
+  // Curación progresiva: baja a medida que subes de piso
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
-  // Curación progresiva: baja a medida que subes de piso
   let porcentajeCura = 0.30;
   if (run.piso >= 31 && run.piso <= 50) porcentajeCura = 0.28;
   else if (run.piso >= 51 && run.piso <= 70) porcentajeCura = 0.25;
@@ -555,15 +575,17 @@ function mostrarPantallaMejoras(opciones, textoCustom) {
   opciones.forEach(function(m) {
     const card = document.createElement('div');
     card.className = 'upgrade-card';
-    // Contador de stacks actuales
     const stacksActuales = run.mejorasTomadas.filter(function(x){ return x === m.id; }).length;
-    const maxStack = m.maxStack || 3;
+    const maxStack = m.maxStack || '∞';
+    const esRelleno = (MEJORAS_RELLENO.indexOf(m) !== -1);
     card.innerHTML =
       '<span class="rarity ' + m.rarity + '">' + m.rarity + '</span>' +
       '<span class="icon">' + m.icon + '</span>' +
       '<div class="name">' + m.name + '</div>' +
       '<div class="desc">' + m.desc + '</div>' +
-      '<div style="font-size:10px;color:#fbbf24;margin-top:6px">Stack ' + (stacksActuales + 1) + '/' + maxStack + '</div>';
+      '<div style="font-size:10px;color:#fbbf24;margin-top:6px">' +
+        (esRelleno ? 'Relleno' : ('Stack ' + (stacksActuales + 1) + '/' + maxStack)) +
+      '</div>';
     card.addEventListener('click', function() {
       SFX.upgrade();
       roguelikeElegirMejora(m);
@@ -927,7 +949,7 @@ function renderBuildOverlay() {
           '<span class="stat-value">' + s.value + '</span>' +
         '</div>';
       }).join('')
-    : '<p style="color:#666;font-size:12px">Aún no tienes bonus. Elige mejoras al terminar cada piso.</p>';
+    : '<p style="color:#666;font-size:12px">Aún no tienes bonus.</p>';
   document.getElementById('buildStats').innerHTML = statsHtml;
 
   const resumen = {};
@@ -949,7 +971,7 @@ function renderBuildOverlay() {
     const m = MEJORAS.find(function(x){ return x.id === id; });
     if (!m) return;
     const count = resumen[id];
-    const maxStack = m.maxStack || 3;
+    const maxStack = m.maxStack || '∞';
     const colorRareza = m.rarity === 'epica' ? '#a855f7' : (m.rarity === 'rara' ? '#38bdf8' : '#94a3b8');
     mejorasHtml += '<div class="mejora-item" style="border-left-color:' + colorRareza + '">' +
       '<span class="mejora-icon">' + m.icon + '</span>' +
