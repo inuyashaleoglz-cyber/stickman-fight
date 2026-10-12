@@ -278,6 +278,33 @@ const SINERGIAS = [
 
 const RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
 // ============================================================
+//  MEJORAS DE RELLENO
+//  Se usan cuando el pool único se agota. Se pueden tomar infinitas veces.
+// ============================================================
+const MEJORAS_RELLENO = [
+  { id:'relleno_daño',    name:'+10% DAÑO',    icon:'💥', rarity:'comun',
+    desc:'+10% daño permanente.',
+    apply: function(b){ b.dañoPct += 0.10; } },
+  { id:'relleno_defensa', name:'+8% DEFENSA',  icon:'🛡️', rarity:'comun',
+    desc:'+8% defensa permanente.',
+    apply: function(b){ b.defensaPct += 0.08; } },
+  { id:'relleno_vida',    name:'+20 VIDA MÁX', icon:'❤️', rarity:'comun',
+    desc:'+20 de vida máxima y te cura.',
+    apply: function(b){ b.vidaMax += 20; } },
+  { id:'relleno_oro',     name:'+80 ORO',      icon:'💰', rarity:'comun',
+    desc:'+80 oro al instante.',
+    apply: function(b){
+      if (typeof run !== 'undefined' && run) run.oro += 80;
+    } },
+  { id:'relleno_medidor', name:'+15% MEDIDOR', icon:'⚡', rarity:'comun',
+    desc:'El medidor se llena 15% más rápido.',
+    apply: function(b){ b.medidorPct += 0.15; } },
+  { id:'relleno_critico', name:'+8% CRÍTICO',  icon:'🎯', rarity:'comun',
+    desc:'+8% probabilidad de crítico.',
+    apply: function(b){ b.critChance += 0.08; } }
+];
+
+// ============================================================
 //  AFIJOS DE RIVAL (a partir del piso 31)
 // ============================================================
 // Cada afijo tiene:
