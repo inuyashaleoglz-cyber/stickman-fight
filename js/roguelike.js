@@ -7,7 +7,13 @@ let run = null;
 //  HELPERS DE PISO
 // ============================================================
 function factorPiso(piso) {
-  return 1 + (piso - 1) * 0.035;
+  // Escalado lineal suave hasta el piso 34
+  if (piso < 35) {
+    return 1 + (piso - 1) * 0.035;
+  }
+  // Escalado exponencial desde el piso 35
+  const p = piso - 35;
+  return 1 + (p / 100) + Math.pow(p / 30, 2) * 0.5 + (34 * 0.035);
 }
 
 function dificultadDelPiso(piso) {
@@ -393,7 +399,14 @@ function roguelikeAlTerminarPiso(ganador) {
 
   const vidaActual = jugador.salud;
   const vidaMax = jugador.maxHealth;
-  const recuperacion = Math.round(vidaMax * 0.30);
+  // Curación progresiva: baja a medida que subes de piso
+  let porcentajeCura = 0.30;
+  if (run.piso >= 31 && run.piso <= 50) porcentajeCura = 0.28;
+  else if (run.piso >= 51 && run.piso <= 70) porcentajeCura = 0.25;
+  else if (run.piso >= 71 && run.piso <= 100) porcentajeCura = 0.22;
+  else if (run.piso >= 101 && run.piso <= 130) porcentajeCura = 0.18;
+  else if (run.piso >= 131) porcentajeCura = 0.15;
+  const recuperacion = Math.round(vidaMax * porcentajeCura);
   const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
   run.__vidaAlEntrar = vidaSiguiente;
 
@@ -612,11 +625,17 @@ function mostrarDescanso() {
   const opciones = [
     {
       icon: '💚', name: 'RECUPERAR VIDA',
-      desc: 'Recuperas el 50% de tu vida máxima.',
+      desc: 'Recuperas un porcentaje de tu vida máxima (baja con el piso).',
       apply: function() {
         const vidaMax = construirJugadorConBonuses().maxHealth;
         const vidaActual = (run.__vidaAlEntrar !== undefined) ? run.__vidaAlEntrar : vidaMax;
-        const curacion = Math.round(vidaMax * 0.5);
+        let pct = 0.50;
+        if (run.piso >= 31 && run.piso <= 50) pct = 0.45;
+        else if (run.piso >= 51 && run.piso <= 70) pct = 0.40;
+        else if (run.piso >= 71 && run.piso <= 100) pct = 0.35;
+        else if (run.piso >= 101 && run.piso <= 130) pct = 0.28;
+        else if (run.piso >= 131) pct = 0.22;
+        const curacion = Math.round(vidaMax * pct);
         run.__vidaAlEntrar = Math.min(vidaMax, vidaActual + curacion);
       }
     },
