@@ -498,7 +498,6 @@ class Fighter {
         spawnRing(this.x, this.y - 50, '#d0b7ff', 100);
       }
     }
-  }
      
     // Pose de victoria
     if (this.poseVictoria) {
