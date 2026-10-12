@@ -129,23 +129,44 @@ function crearRivalDelPiso(piso, personajeJugadorId) {
   const tipo = tipoDePiso(piso);
   let def;
 
-  if (tipo === 'boss_final') {
+  if (esBossFinal(piso) || esBossOculto(piso) || esBossReal(piso)) {
+    // Bosses mayores: usan el personaje especial BOSSES[0]
     def = JSON.parse(JSON.stringify(BOSSES[0]));
-    const factor = 1 + (piso / 30 - 1) * 0.15;
-    def.maxHealth = Math.round(def.maxHealth * Math.max(1, factor));
-    def.dmgMult = def.dmgMult * (1 + (piso - 30) * 0.01);
+    // Escalado especial según piso
+    let factor = 1;
+    if (esBossReal(piso)) factor = 1.0;
+    if (esBossOculto(piso)) factor = 1.5;
+    if (esBossFinal(piso)) factor = 2.2;
+    def.maxHealth = Math.round(def.maxHealth * factor);
+    def.dmgMult = def.dmgMult * factor;
     def.__esBoss = true; def.__esBossFinal = true; def.__esElite = false;
-  } else if (tipo === 'boss') {
+    if (esBossFinal(piso)) def.name = 'EL ARQUITECTO';
+    else if (esBossOculto(piso)) def.name = 'EL VACÍO';
+    else def.name = 'SEÑOR DEL VACÍO';
+  } else if (esPisoBoss(piso)) {
+
+       // Mini-boss (30, 60, 90, 120) o Jefe de Sección (15, 45, 75, 105, 135)
     const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
     const factor = factorPiso(piso);
-    def.maxHealth = Math.round(def.maxHealth * factor * 1.30);
-    def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
-    def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
-    def.name = 'CAMPEÓN ' + def.name;
-    def.__esBoss = true; def.__esBossFinal = false; def.__esElite = false;
+    if (esMiniBoss(piso)) {
+      // Mini-Boss: 2 fases, más fuerte
+      def.maxHealth = Math.round(def.maxHealth * factor * 1.30);
+      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.025) * 1.12;
+      def.speed = def.speed * (1 + (piso - 1) * 0.008) * 1.03;
+      def.name = 'MINI-BOSS ' + def.name;
+      def.__esBoss = true; def.__esBossFinal = true; def.__esElite = false;
+    } else {
+      // Jefe de Sección: más fuerte que elite pero sin multi-fase
+      def.maxHealth = Math.round(def.maxHealth * factor * 1.15);
+      def.dmgMult = def.dmgMult * (1 + (piso - 1) * 0.022) * 1.08;
+      def.speed = def.speed * (1 + (piso - 1) * 0.006) * 1.02;
+      def.name = 'JEFE ' + def.name;
+      def.__esBoss = true; def.__esBossFinal = false; def.__esElite = false;
+    }
   } else if (tipo === 'elite') {
+    
     const disponibles = CHARACTERS.filter(function(c){ return c.id !== personajeJugadorId; });
     const base = disponibles[Math.floor(Math.random() * disponibles.length)];
     def = JSON.parse(JSON.stringify(base));
