@@ -312,11 +312,32 @@ const BOSSES = [
 // ============================================================
 //  HELPERS DE PISO
 // ============================================================
-function esPisoBoss(piso)     { return piso > 0 && piso % 15 === 0; }
-function esPisoBossFinal(piso){ return piso > 0 && piso % 30 === 0; }
+// Pisos especiales
+function esJefeDeSeccion(piso) {
+  return piso === 15 || piso === 45 || piso === 75 || piso === 105 || piso === 135;
+}
+function esMiniBoss(piso) {
+  return piso === 30 || piso === 60 || piso === 90 || piso === 120;
+}
+function esBossReal(piso)   { return piso === 50; }
+function esBossOculto(piso) { return piso === 100; }
+function esBossFinal(piso)  { return piso === 150; }
+
+// Cualquier piso con aviso de boss (para el sistema de aviso)
+function esPisoBoss(piso) {
+  return esJefeDeSeccion(piso) || esMiniBoss(piso) ||
+         esBossReal(piso) || esBossOculto(piso) || esBossFinal(piso);
+}
+// Bosses con múltiples fases
+function esPisoBossFinal(piso) {
+  return esBossReal(piso) || esBossOculto(piso) || esBossFinal(piso);
+}
 function nombrePisoBoss(piso){
-  if (esPisoBossFinal(piso)) return BOSSES[0].name;
-  return 'CAMPEÓN DEL PISO ' + piso;
+  if (esBossFinal(piso)) return 'BOSS FINAL';
+  if (esBossOculto(piso)) return 'EL VACÍO';
+  if (esBossReal(piso)) return 'SEÑOR DEL VACÍO';
+  if (esMiniBoss(piso)) return 'MINI-BOSS';
+  return 'JEFE DE SECCIÓN ' + piso;
 }
 
 function tipoDePiso(piso) {
