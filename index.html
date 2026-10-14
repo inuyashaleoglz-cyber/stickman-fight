@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>STICKMAN FIGHT</title>
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bitcount+Single&family=Press+Start+2P&display=swap" rel="stylesheet">
-<link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -87,27 +87,7 @@
       <button class="overlay-btn" id="victoryMenuBtn">VOLVER AL MENÚ</button>
     </div>
 
-        <div id="vsScreenOverlay" class="overlay vs-screen-overlay">
-      <div class="vs-side vs-left">
-        <div class="vs-portrait" id="vsP1Portrait"></div>
-        <div class="vs-name" id="vsP1Name">JUGADOR</div>
-        <div class="vs-tag" id="vsP1Tag">TÚ</div>
-      </div>
-      <div class="vs-center">
-        <div class="vs-text">VS</div>
-      </div>
-      <div class="vs-side vs-right">
-        <div class="vs-portrait" id="vsP2Portrait"></div>
-        <div class="vs-name" id="vsP2Name">RIVAL</div>
-        <div class="vs-tag" id="vsP2Tag">CPU</div>
-      </div>
-    </div>
-
-    <div id="comboCallOverlay" class="combo-call">
-      <div class="combo-call-text" id="comboCallText">¡COMBO!</div>
-    </div>
-    
-        <div id="bossWarningOverlay" class="overlay boss-warning-overlay">
+    <div id="bossWarningOverlay" class="overlay boss-warning-overlay">
       <div class="boss-warning-icon" id="bossWarningIcon">⚠</div>
       <div class="boss-warning-title" id="bossWarningTitle">CAMPEÓN DEL PISO 15</div>
       <div class="boss-warning-sub" id="bossWarningSub">PREPÁRATE PARA EL COMBATE</div>
@@ -140,6 +120,26 @@
       </div>
       <div class="tienda-grid" id="tiendaGrid"></div>
       <button class="overlay-btn" id="tiendaSalirBtn">SALIR ▶</button>
+    </div>
+
+    <div id="vsScreenOverlay" class="overlay vs-screen-overlay">
+      <div class="vs-side vs-left">
+        <div class="vs-portrait" id="vsP1Portrait"></div>
+        <div class="vs-name" id="vsP1Name">JUGADOR</div>
+        <div class="vs-tag" id="vsP1Tag">TÚ</div>
+      </div>
+      <div class="vs-center">
+        <div class="vs-text">VS</div>
+      </div>
+      <div class="vs-side vs-right">
+        <div class="vs-portrait" id="vsP2Portrait"></div>
+        <div class="vs-name" id="vsP2Name">RIVAL</div>
+        <div class="vs-tag" id="vsP2Tag">CPU</div>
+      </div>
+    </div>
+
+    <div id="comboCallOverlay" class="combo-call">
+      <div class="combo-call-text" id="comboCallText">¡COMBO!</div>
     </div>
 
     <div id="buildOverlay" class="overlay build-overlay">
@@ -182,6 +182,16 @@
 
 <div id="errorBox"></div>
 
+<!-- DATA -->
+<script src="data/personajes.js"></script>
+<script src="data/movimientos.js"></script>
+<script src="data/mejoras.js"></script>
+<script src="data/sinergias.js"></script>
+<script src="data/afijos.js"></script>
+<script src="data/tienda.js"></script>
+<script src="data/bosses.js"></script>
+<script src="data/escenarios.js"></script>
+<!-- LÓGICA -->
 <script src="js/config.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/fighter.js"></script>
