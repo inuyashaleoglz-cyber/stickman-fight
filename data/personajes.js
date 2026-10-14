@@ -1,0 +1,50 @@
+window.CHARACTERS = [
+  { id:'rocky', name:'ROCKY', desc:'Tanque equilibrado', color:'#4ade80', accent:'#22c55e',
+    maxHealth:115, speed:4.3, dmgMult:1.05, jumpPower:-13,
+    stats:{hp:78, spd:60, pow:75, def:85},
+    abilityName:'PIEL DE HIERRO', abilityDesc:'-15% daño recibido',
+    specialName:'METEORO', special:{damage:32, range:80, launch:true, superArmor:true},
+    personality:'balanced' },
+
+  { id:'blaze', name:'BLAZE', desc:'Rápido y ágil', color:'#fbbf24', accent:'#f59e0b',
+    maxHealth:85, speed:5.7, dmgMult:0.85, jumpPower:-14.5,
+    stats:{hp:48, spd:98, pow:55, def:45},
+    abilityName:'DOBLE SALTO', abilityDesc:'Salta 2 veces en el aire',
+    specialName:'FURIA FUGÁZ', special:{damage:30, range:80, launch:false},
+    personality:'rushdown' },
+
+  { id:'titan', name:'TITAN', desc:'Lento y brutal', color:'#a78bfa', accent:'#8b5cf6',
+    maxHealth:145, speed:3.2, dmgMult:1.35, jumpPower:-11.5,
+    stats:{hp:98, spd:30, pow:98, def:95},
+    abilityName:'ROCA VIVA', abilityDesc:'-25% daño, no retrocede',
+    specialName:'TERREMOTO', special:{damage:36, range:110, launch:true},
+    personality:'defensive' },
+
+  { id:'shadow', name:'SHADOW', desc:'Ninja veloz', color:'#06b6d4', accent:'#0891b2',
+    maxHealth:95, speed:4.6, dmgMult:1.05, jumpPower:-14,
+    stats:{hp:58, spd:82, pow:72, def:55},
+    abilityName:'SOMBRA VELOZ', abilityDesc:'+30% vel al retroceder',
+    specialName:'CORTE UMBRÍO', special:{damage:32, range:90, launch:false, teleport:true},
+    personality:'trickster' },
+
+  { id:'frost', name:'FROST', desc:'Maestro del hielo', color:'#67e8f9', accent:'#0ea5e9',
+    maxHealth:92, speed:4.5, dmgMult:0.95, jumpPower:-13.5,
+    stats:{hp:55, spd:72, pow:68, def:58},
+    abilityName:'TOQUE GÉLIDO', abilityDesc:'Sus golpes ralentizan 2s',
+    specialName:'VENTISCA', special:{damage:24, range:9999, launch:false, projectile:true, slow:true},
+    personality:'zoner' },
+
+  { id:'bolt', name:'BOLT', desc:'Velocidad eléctrica', color:'#fde047', accent:'#eab308',
+    maxHealth:88, speed:5.0, dmgMult:1.0, jumpPower:-14,
+    stats:{hp:55, spd:88, pow:78, def:50},
+    abilityName:'SOBRECARGA', abilityDesc:'Rayo extra cada 4 golpes',
+    specialName:'TORMENTA', special:{damage:28, range:9999, launch:true, lightning:true},
+    personality:'technical' },
+
+  { id:'phoenix', name:'PHOENIX', desc:'Fénix inmortal', color:'#fb923c', accent:'#f97316',
+    maxHealth:100, speed:4.2, dmgMult:1.05, jumpPower:-13,
+    stats:{hp:68, spd:65, pow:78, def:62},
+    abilityName:'REGENERACIÓN', abilityDesc:'Cura vida lentamente',
+    specialName:'NOVA SOLAR', special:{damage:28, range:130, launch:true, heal:18},
+    personality:'balanced' }
+];
