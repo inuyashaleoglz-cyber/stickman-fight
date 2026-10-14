@@ -1,0 +1,61 @@
+/* ============================================================
+   ANIMACIONES — Todos los @keyframes del juego
+   ============================================================ */
+
+/* Menú */
+@keyframes twinkle { from { opacity: 0.3; } to { opacity: 0.8; } }
+
+/* Boss Warning */
+@keyframes bossPulse {
+  from { box-shadow: inset 0 0 80px rgba(255,122,122,0.3); }
+  to   { box-shadow: inset 0 0 120px rgba(255,122,122,0.6); }
+}
+@keyframes bossIconShake {
+  0%, 100% { transform: translateX(-2px) scale(1); }
+  50%      { transform: translateX(2px) scale(1.05); }
+}
+@keyframes bossTitleIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes elitePulse {
+  from { box-shadow: inset 0 0 80px rgba(255,247,161,0.3); }
+  to   { box-shadow: inset 0 0 120px rgba(255,247,161,0.6); }
+}
+
+/* Conquista */
+@keyframes conquistaBounce {
+  from { transform: scale(1); }
+  to   { transform: scale(1.12); }
+}
+
+/* VS Screen */
+@keyframes vsFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes vsSlideLeft {
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes vsSlideRight {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes vsPortraitPulse {
+  from { box-shadow: 0 0 30px currentColor, inset 0 0 20px rgba(255,255,255,0.05); }
+  to   { box-shadow: 0 0 60px currentColor, inset 0 0 30px rgba(255,255,255,0.1); }
+}
+@keyframes vsPulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+/* Combo Call */
+@keyframes comboCallAnim {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  25%  { transform: translate(-50%, -50%) scale(1); }
+  75%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1) translateY(-30px); }
+}
