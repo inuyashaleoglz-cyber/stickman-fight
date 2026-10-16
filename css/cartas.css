@@ -232,3 +232,24 @@
   text-overflow: ellipsis;
 }
 .mejoras-resumen .count { color: var(--neon-mint); font-weight: 800; }
+/* Rareza Legendaria */
+.upgrade-card .rarity.legendaria {
+  background: linear-gradient(90deg, #fff7a1, #ffb894);
+  color: #0a0618;
+  text-shadow: none;
+  box-shadow: 0 0 15px rgba(255,247,161,0.6);
+}
+.upgrade-card:has(.rarity.legendaria) {
+  border-color: #fff7a1;
+  box-shadow: 0 0 30px rgba(255,247,161,0.4);
+}
+/* Rareza Maldición */
+.upgrade-card .rarity.maldicion {
+  background: linear-gradient(90deg, #7c3aed, #ef4444);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(124,58,237,0.6);
+}
+.upgrade-card:has(.rarity.maldicion) {
+  border-color: #7c3aed;
+  box-shadow: 0 0 30px rgba(124,58,237,0.4);
+}
