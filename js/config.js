@@ -76,6 +76,7 @@ function esPisoEvento(piso)  {
 // ============================================================
 function bonusesVacios() {
   return {
+    // Originales
     vidaMax: 0,
     dañoPct: 0,
     medidorPct: 0,
@@ -108,6 +109,44 @@ function bonusesVacios() {
     furiaBajaVida: 0,
     revivir: 0,
     critGarantizadoCombo: 0,
+    // Legendarias
+    relojArena: 0,
+    corazonTitan: 0,
+    cuchilloAsesino: 0,
+    espejoRoto: 0,
+    ojoVacio: 0,
+    coronaRey: 0,
+    amuletoCazador: 0,
+    monedaSuerte: 0,
+    corazonTempestuoso: 0,
+    plumaFenix: 0,
+    cicatrizGuerra: 0,
+    mantoSombras: 0,
+    bolaCristal: 0,
+    calaveraMaldita: 0,
+    estrellaFugaz: 0,
+    // Maldiciones
+    sangreDiablo: 0,
+    pactoVacio: 0,
+    pesoMundo: 0,
+    almasLlamas: 0,
+    corazonHelado: 0,
+    marcaCazador: 0,
+    fragmentoMaldito: 0,
+    cadenaPreso: 0,
+    espejoQuebrado: 0,
+    ojoCiego: 0,
+    // Estados
+    veneno: 0,
+    quemadura: 0,
+    congelacionEstado: 0,
+    shock: 0,
+    corrosion: 0,
+    maldicionEstado: 0,
+    bendicion: 0,
+    regeneracionEstado: 0,
+    escudo: 0,
+    // Sinergias
     sinergiasActivas: []
   };
 }
