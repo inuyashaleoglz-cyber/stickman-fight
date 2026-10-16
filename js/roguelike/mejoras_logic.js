@@ -46,7 +46,7 @@ function elegirMejorasAleatorias(cantidad) {
     return true;
   });
 
-  const porRareza = { comun: [], rara: [], epica: [] };
+  const porRareza = { comun: [], rara: [], epica: [], legendaria: [] };
   disponibles.forEach(function(m){
     if (porRareza[m.rarity]) porRareza[m.rarity].push(m);
   });
@@ -57,8 +57,9 @@ function elegirMejorasAleatorias(cantidad) {
   for (let i = 0; i < cantidad; i++) {
     const r = Math.random() * 100;
     let rareza;
-    if (r < RARITY_WEIGHTS.epica) rareza = 'epica';
-    else if (r < RARITY_WEIGHTS.epica + RARITY_WEIGHTS.rara) rareza = 'rara';
+    if (r < RARITY_WEIGHTS.legendaria) rareza = 'legendaria';
+    else if (r < RARITY_WEIGHTS.legendaria + RARITY_WEIGHTS.epica) rareza = 'epica';
+    else if (r < RARITY_WEIGHTS.legendaria + RARITY_WEIGHTS.epica + RARITY_WEIGHTS.rara) rareza = 'rara';
     else rareza = 'comun';
 
     let pool = porRareza[rareza].filter(function(m){ return !usadas[m.id]; });
