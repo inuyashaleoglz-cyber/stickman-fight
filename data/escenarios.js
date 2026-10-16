@@ -11,4 +11,4 @@ window.AIS = {
   pesadilla: {name:'PESADILLA', color:'#ef4444', reaction:9,  aggression:0.82, blockChance:0.68, dodgeChance:0.55, speedMult:1.12, dmgMult:1.18, prediction:0.55, specialUse:0.85}
 };
 
-window.RARITY_WEIGHTS = { comun: 60, rara: 32, epica: 8 };
+window.RARITY_WEIGHTS = { comun: 55, rara: 30, epica: 10, legendaria: 5 };
