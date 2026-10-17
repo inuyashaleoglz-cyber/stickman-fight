@@ -54,6 +54,22 @@ class Fighter {
     this.clonX = 0;
     this.faseActual = 1;
     this.saltosUsados = 0;
+        // Estados (Tanda 1)
+    this.venenoStacks = 0;
+    this.venenoTimer = 0;
+    this.quemaduraStacks = 0;
+    this.quemaduraTimer = 0;
+    this.corrosionStacks = 0;
+    this.maldicionStacks = 0;
+    this.bendicionStacks = 0;
+    this.shockTimer = 0;
+    this.escudoActual = 0;
+    this.escudoRecargaTimer = 0;
+    // Legendarias
+    this.relojTimer = 0;
+    this.contadorGolpes = 0;
+    this.plumaUsada = false;
+    this.pactoAlmasAccum = 0;
     // IA
     this.aiDecisionTimer = 0;
     this.aiAction = {move:0, jump:false, crouch:false, block:false, move_name:null};
@@ -87,6 +103,21 @@ class Fighter {
     this.caoticoTimer = 0;
     this.regenAfijoAccum = 0;
     this.__explosivoDisparado = false;
+    // Estados
+    this.venenoStacks = 0;
+    this.venenoTimer = 0;
+    this.quemaduraStacks = 0;
+    this.quemaduraTimer = 0;
+    this.corrosionStacks = 0;
+    this.maldicionStacks = 0;
+    this.bendicionStacks = 0;
+    this.shockTimer = 0;
+    this.escudoActual = 0;
+    this.escudoRecargaTimer = 0;
+    this.relojTimer = 0;
+    this.contadorGolpes = 0;
+    this.plumaUsada = false;
+    this.pactoAlmasAccum = 0;
     this.clonesActivos = 0;
     this.sangradoTimer = 0;
     this.sangradoAplica = 0;
@@ -482,7 +513,75 @@ class Fighter {
         this.regenAfijoAccum -= cur;
       }
     }
+    // ════════════════════════════════════════════════════════
+    //  ESTADOS ACTIVOS (Tanda 1)
+    // ════════════════════════════════════════════════════════
 
+    // VENENO
+    if (this.venenoTimer > 0) {
+      this.venenoTimer--;
+      this._venenoAccum = (this._venenoAccum || 0) + this.venenoStacks * 2 / 60;
+      if (this._venenoAccum >= 1) {
+        const dmg = Math.floor(this._venenoAccum);
+        this.salud -= dmg;
+        if (this.salud < 0) this.salud = 0;
+        this._venenoAccum -= dmg;
+        spawnDamageNumber(this.x + (Math.random()-0.5)*20, this.y - 80, '-' + dmg, '#22c55e');
+      }
+      if (this.venenoTimer === 0) this.venenoStacks = 0;
+    }
+    // QUEMADURA
+    if (this.quemaduraTimer > 0) {
+      this.quemaduraTimer--;
+      this._quemaduraAccum = (this._quemaduraAccum || 0) + this.quemaduraStacks * 3 / 60;
+      if (this._quemaduraAccum >= 1) {
+        const dmg = Math.floor(this._quemaduraAccum);
+        this.salud -= dmg;
+        if (this.salud < 0) this.salud = 0;
+        this._quemaduraAccum -= dmg;
+        spawnDamageNumber(this.x + (Math.random()-0.5)*20, this.y - 80, '-' + dmg, '#ff6a2a');
+      }
+      if (this.quemaduraTimer === 0) this.quemaduraStacks = 0;
+    }
+    // SHOCK
+    if (this.shockTimer > 0) this.shockTimer--;
+
+    // ESCUDO
+    if (this.escudoRecargaTimer > 0) {
+      this.escudoRecargaTimer--;
+    } else if (this.bonuses && this.bonuses.escudo > 0 && this.escudoActual < 5 * this.bonuses.escudo) {
+      this.escudoActual = Math.min(5 * this.bonuses.escudo, this.escudoActual + 1);
+      this.escudoRecargaTimer = 180;
+    }
+
+    // RELOJ DE ARENA
+    if (this.bonuses && this.bonuses.relojArena) {
+      this.relojTimer++;
+      if (this.relojTimer >= 1200) {
+        this.relojTimer = 0;
+        if (this.salud > 0 && this.salud < this.maxHealth * 0.5) {
+          const objetivo = Math.round(this.maxHealth * 0.5);
+          const curacion = objetivo - this.salud;
+          this.salud = objetivo;
+          spawnDamageNumber(this.x, this.y - 120, '+' + curacion, '#9de6ff', true);
+          spawnParticles(this.x, this.y - 50, 20, '#9de6ff', 8);
+          spawnRing(this.x, this.y - 50, '#9de6ff', 100);
+        }
+      }
+    }
+
+    // PESO DEL MUNDO no aplica aquí (velocidad ya se aplica en stats)
+
+    // ALMAS EN LLAMAS
+    if (this.bonuses && this.bonuses.almasLlamas && this.salud > 1) {
+      this._almasAccum = (this._almasAccum || 0) + 1/60;
+      if (this._almasAccum >= 1) {
+        this._almasAccum -= 1;
+        this.salud -= 1;
+        if (this.salud < 0) this.salud = 0;
+      }
+    }
+    
     // CAÓTICO: cada 10 segundos se teletransporta
     if (this.def && this.def.__afijo_caotico && this.enSuelo && this.salud > 0) {
       this.caoticoTimer++;
@@ -538,6 +637,34 @@ class Fighter {
 
     if (mv.special) daño *= 1.2;
     if (this.esIA) daño *= AIS[dificultad].dmgMult;
+        // LEGENDARIAS — bonus de daño situacional
+    if (this.bonuses) {
+      const bb = this.bonuses;
+      // AMULETO DEL CAZADOR
+      if (bb.amuletoCazador && oponente.def && (oponente.def.__esElite || oponente.def.__esBoss)) {
+        daño *= 1.40;
+      }
+      // OJO DEL VACÍO
+      if (bb.ojoVacio && oponente.salud / oponente.maxHealth < 0.30) {
+        daño *= 1.20;
+      }
+      // CICATRIZ DE GUERRA
+      if (bb.cicatrizGuerra && typeof run !== 'undefined' && run) {
+        const bonus = Math.min(0.80, run.piso * 0.08);
+        daño *= (1 + bonus);
+      }
+      // BENDICIÓN (stacks propios)
+      if (this.bendicionStacks > 0) {
+        daño *= (1 + this.bendicionStacks * 0.03);
+      }
+      // CORROSIÓN y MALDICIÓN del rival
+      if (oponente.corrosionStacks > 0) {
+        daño *= (1 + oponente.corrosionStacks * 0.05);
+      }
+      if (oponente.maldicionStacks > 0) {
+        daño *= (1 - oponente.maldicionStacks * 0.05);
+      }
+    }
     daño = Math.round(daño);
 
      // Crítico
@@ -650,7 +777,85 @@ class Fighter {
       spawnParticles(oponente.x, oponente.y - 30, 6, '#67e8f9', 4);
       spawnRing(oponente.x, oponente.y - 30, '#67e8f9', 40);
     }
+    // ════════════════════════════════════════════════════════
+    //  ESTADOS (Tanda 1)
+    // ════════════════════════════════════════════════════════
+    const b = this.bonuses || {};
 
+    // VENENO
+    if (b.veneno > 0) {
+      oponente.venenoStacks = Math.min(5, oponente.venenoStacks + b.veneno);
+      oponente.venenoTimer = Math.max(oponente.venenoTimer, 240);
+      spawnParticles(oponente.x, oponente.y - 40, 4, '#22c55e', 4);
+    }
+    // QUEMADURA
+    if (b.quemadura > 0) {
+      oponente.quemaduraStacks = Math.min(5, oponente.quemaduraStacks + b.quemadura);
+      oponente.quemaduraTimer = Math.max(oponente.quemaduraTimer, 180);
+      spawnParticles(oponente.x, oponente.y - 40, 4, '#ff6a2a', 4);
+    }
+    // CONGELACIÓN ESTADO
+    if (b.congelacionEstado > 0) {
+      oponente.slowTimer = Math.max(oponente.slowTimer, 120 * b.congelacionEstado);
+    }
+    // SHOCK
+    if (b.shock > 0 && Math.random() < 0.20 * b.shock) {
+      oponente.shockTimer = 30;
+      oponente.estado = 'hit';
+      oponente.estadoTimer = 30;
+      spawnParticles(oponente.x, oponente.y - 50, 12, '#fde047', 8);
+      spawnRing(oponente.x, oponente.y - 50, '#fde047', 60);
+    }
+    // CORROSIÓN
+    if (b.corrosion > 0) {
+      oponente.corrosionStacks = Math.min(5, oponente.corrosionStacks + 1);
+    }
+    // MALDICIÓN
+    if (b.maldicionEstado > 0) {
+      oponente.maldicionStacks = Math.min(5, oponente.maldicionStacks + 1);
+    }
+    // BENDICIÓN (a sí mismo)
+    if (b.bendicion > 0) {
+      this.bendicionStacks = Math.min(10, this.bendicionStacks + 1);
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  LEGENDARIAS CON EFECTO EN GOLPE
+    // ════════════════════════════════════════════════════════
+
+    // CUCHILLO DEL ASESINO
+    if (b.cuchilloAsesino && oponente.salud / oponente.maxHealth < 0.20) {
+      if (Math.random() < 0.08) {
+        const vidaAntes = oponente.salud;
+        oponente.salud = 0;
+        spawnDamageNumber(oponente.x, oponente.y - 130, '¡EJECUCIÓN!', '#ef4444', true);
+        spawnParticles(oponente.x, oponente.y - 50, 40, '#ef4444', 14);
+        shake(25);
+        if (typeof SFX !== 'undefined') SFX.ko();
+      }
+    }
+
+    // CORAZÓN TEMPESTUOSO
+    if (b.corazonTempestuoso && Math.random() < 0.15) {
+      spawnLightning(oponente.x, oponente.y - 50, '#9de6ff');
+      oponente.salud -= 8;
+      if (oponente.salud < 0) oponente.salud = 0;
+      spawnDamageNumber(oponente.x, oponente.y - 110, '⚡8', '#9de6ff', true);
+    }
+
+    // ESTRELLA FUGAZ — contador de golpes
+    if (b.estrellaFugaz) {
+      this.contadorGolpes++;
+      if (this.contadorGolpes >= 5) {
+        this.contadorGolpes = 0;
+        oponente.salud -= Math.round(daño * 0.5);
+        if (oponente.salud < 0) oponente.salud = 0;
+        spawnDamageNumber(oponente.x, oponente.y - 130, '¡ESTRELLA!', '#fff7a1', true);
+        spawnParticles(oponente.x, oponente.y - 50, 25, '#fff7a1', 12);
+        spawnRing(oponente.x, oponente.y - 50, '#fff7a1', 180);
+      }
+    }
+    
     // Vampirismo
     if (this.bonuses && this.bonuses.vampirismo > 0 && this.salud > 0) {
       const curacion = Math.max(1, Math.round(dmgFinal * this.bonuses.vampirismo));
@@ -735,6 +940,28 @@ class Fighter {
     }
   }
   recibirDaño(daño, atacante, tipo) {
+    // ════════════════════════════════════════════════════════
+    //  MANTO DE SOMBRAS (Legendaria)
+    // ════════════════════════════════════════════════════════
+    if (this.bonuses && this.bonuses.mantoSombras && Math.random() < 0.20) {
+      spawnDamageNumber(this.x, this.y - 100, 'MISS', '#d0b7ff', true);
+      spawnParticles(this.x, this.y - 50, 12, '#d0b7ff', 6);
+      this.invulnerable = 10;
+      return;
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  ESCUDO (absorbción)
+    // ════════════════════════════════════════════════════════
+    if (this.escudoActual > 0) {
+      const absorbido = Math.min(this.escudoActual, daño);
+      this.escudoActual -= absorbido;
+      daño -= absorbido;
+      spawnDamageNumber(this.x, this.y - 100, '-' + absorbido + ' ESCUDO', '#9dffd4');
+      spawnParticles(this.x, this.y - 50, 8, '#9dffd4', 5);
+      if (daño <= 0) return;
+    }
+
     if (this.blocking && atacante && ((atacante.x - this.x) * this.facing < 0)) {
       let reduccion = 0.15;
       if (this.bonuses && this.bonuses.bloqueoExtraPct > 0) reduccion += this.bonuses.bloqueoExtraPct;
