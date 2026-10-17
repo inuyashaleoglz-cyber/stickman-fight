@@ -113,6 +113,10 @@ function roguelikeAlTerminarPiso(ganador) {
   let oroGanado = 10 + run.piso * 3;
   if (run.esElitePiso) oroGanado += 30;
   if (run.esBossPiso) oroGanado += 60;
+  // MONEDA DE LA SUERTE
+  if (run.bonuses.monedaSuerte) oroGanado *= 2;
+  // FRAGMENTO MALDITO
+  if (run.bonuses.fragmentoMaldito) oroGanado += 100;
   run.oro += oroGanado;
 
   const vidaActual = jugador.salud;
