@@ -127,9 +127,14 @@ function roguelikeAlTerminarPiso(ganador) {
   else if (run.piso >= 71 && run.piso <= 100) porcentajeCura = 0.22;
   else if (run.piso >= 101 && run.piso <= 130) porcentajeCura = 0.18;
   else if (run.piso >= 131) porcentajeCura = 0.15;
-  const recuperacion = Math.round(vidaMax * porcentajeCura);
-  const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
-  run.__vidaAlEntrar = vidaSiguiente;
+  // CORAZÓN DEL TITÁN: no cura nunca
+  if (run.bonuses.corazonTitan) {
+    run.__vidaAlEntrar = Math.min(vidaMax, vidaActual);
+  } else {
+    const recuperacion = Math.round(vidaMax * porcentajeCura);
+    const vidaSiguiente = Math.min(vidaMax, vidaActual + recuperacion);
+    run.__vidaAlEntrar = vidaSiguiente;
+  };
 
   const esConquista = (run.piso % 30 === 0);
   if (esConquista) {
