@@ -70,8 +70,9 @@ function mostrarVictoriaRoguelike() {
 
 function intentarRevivir() {
   if (!jugador || !run || !run.bonuses) return false;
-  if (!run.bonuses.revivir) return false;
-  if (jugador.reviviresRestantes <= 0) return false;
+   const tienePluma = run.bonuses.plumaFenix && !jugador.plumaUsada;
+  if (jugador.reviviresRestantes <= 0 && !tienePluma) return false;
+  if (jugador.reviviresRestantes <= 0 && tienePluma) jugador.reviviresRestantes = 1;
   if (jugador.salud > 0) return false;
   jugador.reviviresRestantes--;
   jugador.salud = Math.round(jugador.maxHealth * 0.40);
